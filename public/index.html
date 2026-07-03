@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>代办清单</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            background-color: #e8e3dc;
+            background-image: url('https://images.unsplash.com/photo-1481277542470-605612bd2d61?w=1920&q=80&auto=format');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 20px;
+        }
+
+        .container {
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22);
+            width: 100%;
+            max-width: 520px;
+            padding: 32px;
+            position: relative;
+        }
+
+        /* 连接状态徽章 */
+        .connection-badge {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+        }
+        .connection-badge:hover {
+            background: #edf2f7;
+        }
+        .connection-badge .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #cbd5e0;
+            transition: background 0.2s;
+        }
+        .connection-badge.connected .dot {
+            background: #48bb78;
+            box-shadow: 0 0 0 3px rgba(72, 187, 120, 0.2);
+        }
+        .connection-badge.connecting .dot {
+            background: #ed8936;
+            animation: pulse 1.2s infinite;
+        }
+        .connection-badge.disconnected .dot {
+            background: #e53e3e;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        h1 {
+            color: #2d3748;
+            font-size: 28px;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .subtitle {
+            color: #718096;
+            text-align: center;
+            margin-bottom: 24px;
+            font-size: 14px;
+        }
+
+        .input-area {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        #todo-input {
+            flex: 1;
+            min-width: 160px;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: border-color 0.2s;
+            outline: none;
+        }
+
+        #todo-input:focus {
+            border-color: #667eea;
+        }
+
+        #todo-input:disabled {
+            background: #f7fafc;
+            cursor: not-allowed;
+        }
+
+        #due-input {
+            padding: 12px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            color: #4a5568;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.2s;
+            outline: none;
+            min-width: 140px;
+        }
+
+        #due-input:focus {
+            border-color: #667eea;
+        }
+
+        #due-input:disabled {
+            background: #f7fafc;
+            cursor: not-allowed;
+        }
+
+        #due-input.has-value {
+            border-color: #cbd5e0;
+        }
+
+        .input-hint {
+            font-size: 11px;
+            color: #a0aec0;
+            margin-top: -16px;
+            margin-bottom: 16px;
+            padding: 0 4px;
+        }
+
+        #add-btn {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        #add-btn:hover:not(:disabled) {
+            background: #5568d3;
+        }
+
+        #add-btn:active:not(:disabled) {
+            transform: scale(0.97);
+        }
+
+        #add-btn:disabled {
+            background: #cbd5e0;
+            cursor: not-allowed;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: #f7fafc;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 13px;
+            color: #4a5568;
+        }
+
+        .filters {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .filter-btn {
+            flex: 1;
+            padding: 8px;
+            background: transparent;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #4a5568;
+            transition: all 0.2s;
+        }
+
+        .filter-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        #todo-list {
+            list-style: none;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        #todo-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #todo-list::-webkit-scrollbar-thumb {
+            background: #cbd5e0;
+            border-radius: 3px;
+        }
+
+        .todo-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            background: #f7fafc;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            transition: all 0.2s;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .todo-item:hover {
+            background: #edf2f7;
+        }
+
+        .todo-item.completed .todo-text {
+            text-decoration: line-through;
+            color: #a0aec0;
+        }
+
+        .todo-item.completed .todo-due {
+            opacity: 0.5;
+        }
+
+        .todo-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .todo-checkbox {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: #667eea;
+            flex-shrink: 0;
+        }
+
+        .todo-text {
+            display: block;
+            color: #2d3748;
+            font-size: 15px;
+            word-break: break-word;
+        }
+
+        .todo-due {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 4px;
+            padding: 3px 8px;
+            font-size: 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            user-select: none;
+            transition: opacity 0.2s;
+        }
+        .todo-due:hover {
+            opacity: 0.75;
+        }
+        .todo-due .due-icon {
+            font-size: 13px;
+        }
+        .todo-due .due-edit {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+            width: 0;
+            height: 0;
+        }
+
+        /* 状态颜色 */
+        .todo-due.overdue {
+            background: #fed7d7;
+            color: #c53030;
+            font-weight: 600;
+        }
+        .todo-due.today {
+            background: #feebc8;
+            color: #c05621;
+            font-weight: 600;
+            animation: pulseDue 2s infinite;
+        }
+        .todo-due.soon {
+            background: #fefcbf;
+            color: #975a16;
+        }
+        .todo-due.upcoming {
+            background: #c6f6d5;
+            color: #276749;
+        }
+        .todo-due.future {
+            color: #718096;
+            background: transparent;
+            padding-left: 0;
+        }
+        @keyframes pulseDue {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .todo-due.no-date {
+            color: #cbd5e0;
+            background: transparent;
+            font-size: 11px;
+        }
+        .todo-due.no-date:hover {
+            color: #667eea;
+        }
+
+        .delete-btn {
+            background: transparent;
+            border: none;
+            color: #e53e3e;
+            cursor: pointer;
+            font-size: 18px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .delete-btn:hover {
+            background: #fed7d7;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #a0aec0;
+            font-size: 14px;
+        }
+
+        .empty-state::before {
+            content: "📝";
+            display: block;
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        /* 设置弹窗 */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            padding: 20px;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .modal {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            width: 100%;
+            max-width: 460px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .modal h3 {
+            margin-bottom: 12px;
+            color: #2d3748;
+            font-size: 18px;
+        }
+        .modal p {
+            color: #4a5568;
+            font-size: 14px;
+            margin-bottom: 12px;
+            line-height: 1.6;
+        }
+        .modal p code {
+            background: #edf2f7;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #2b6cb0;
+        }
+        .modal input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 16px;
+            outline: none;
+        }
+        .modal input:focus {
+            border-color: #667eea;
+        }
+        .modal-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+        .modal-btn {
+            padding: 8px 18px;
+            border-radius: 6px;
+            border: none;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .modal-btn.primary {
+            background: #667eea;
+            color: white;
+        }
+        .modal-btn.primary:hover {
+            background: #5568d3;
+        }
+        .modal-btn.secondary {
+            background: #edf2f7;
+            color: #4a5568;
+        }
+        .modal-btn.secondary:hover {
+            background: #e2e8f0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="connection-badge connecting" id="conn-badge" title="点击设置服务器地址">
+            <span class="dot"></span>
+            <span class="text" id="conn-text">连接中...</span>
+        </div>
+
+        <h1>📋 代办清单</h1>
+        <p class="subtitle">把要做的事记下来，<span id="online-text">一起搞定它</span></p>
+
+        <div class="input-area">
+            <input
+                type="text"
+                id="todo-input"
+                placeholder="输入新任务，回车添加..."
+                maxlength="200"
+                disabled
+            >
+            <input
+                type="date"
+                id="due-input"
+                disabled
+                aria-label="截止日期"
+            >
+            <button id="add-btn" disabled>添加</button>
+        </div>
+        <div class="input-hint">💡 日期可选，不选表示无截止时间</div>
+
+        <div class="stats">
+            <span>总计：<strong id="total-count">0</strong></span>
+            <span>已完成：<strong id="done-count">0</strong></span>
+            <span>未完成：<strong id="pending-count">0</strong></span>
+            <span>在线：<strong id="online-count">0</strong></span>
+        </div>
+
+        <div class="filters">
+            <button class="filter-btn active" data-filter="all">全部</button>
+            <button class="filter-btn" data-filter="pending">未完成</button>
+            <button class="filter-btn" data-filter="completed">已完成</button>
+        </div>
+
+        <ul id="todo-list"></ul>
+    </div>
+
+    <!-- 设置弹窗 -->
+    <div class="modal-overlay" id="settings-modal">
+        <div class="modal">
+            <h3>⚙ 同步服务器设置</h3>
+            <p>
+                默认会连接当前页面的同源地址。如果你的服务器部署在其他域名，
+                在下面输入对应的 WebSocket 地址：
+            </p>
+            <p style="font-size: 12px; color: #718096;">
+                💡 格式：<code>ws://域名:端口</code> 或 <code>wss://域名:端口</code><br>
+                留空则使用同源地址：<code id="default-url-hint"></code>
+            </p>
+            <input
+                type="text"
+                id="ws-url-input"
+                placeholder="留空使用同源地址"
+            >
+            <div class="modal-actions">
+                <button class="modal-btn secondary" id="modal-cancel">取消</button>
+                <button class="modal-btn primary" id="modal-connect">连接</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ====== 全局状态 ======
+        let todos = [];
+        let currentFilter = 'all';
+        let ws = null;
+        // 默认使用同源地址（同域名、同端口），用户可在设置中手动覆盖
+        const defaultWsUrl = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
+        let wsUrl = localStorage.getItem('todo_ws_url') || defaultWsUrl;
+        let onlineCount = 0;
+        let reconnectTimer = null;
+        let userId = localStorage.getItem('todo_user_id');
+        if (!userId) {
+            userId = 'user-' + Math.random().toString(36).slice(2, 8);
+            localStorage.setItem('todo_user_id', userId);
+        }
+
+        // ====== DOM 引用 ======
+        const input = document.getElementById('todo-input');
+        const addBtn = document.getElementById('add-btn');
+        const dueInput = document.getElementById('due-input');
+        const list = document.getElementById('todo-list');
+        const totalCount = document.getElementById('total-count');
+        const doneCount = document.getElementById('done-count');
+        const pendingCount = document.getElementById('pending-count');
+        const onlineCountEl = document.getElementById('online-count');
+        const filterBtns = document.querySelectorAll('.filter-btn');
+        const connBadge = document.getElementById('conn-badge');
+        const connText = document.getElementById('conn-text');
+        const onlineText = document.getElementById('online-text');
+        const modal = document.getElementById('settings-modal');
+        const wsUrlInput = document.getElementById('ws-url-input');
+        const modalConnect = document.getElementById('modal-connect');
+        const modalCancel = document.getElementById('modal-cancel');
+
+        // 截止日期状态计算
+        function getDueStatus(dueDate) {
+            if (!dueDate) return null;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const due = new Date(dueDate + 'T00:00:00');
+            if (isNaN(due.getTime())) return null;
+            const diffDays = Math.round((due - today) / (1000 * 60 * 60 * 24));
+            if (diffDays < 0)  return { cls: 'overdue',  icon: '⚠',  text: `已过期 ${-diffDays} 天` };
+            if (diffDays === 0) return { cls: 'today',    icon: '🔥', text: '今天到期' };
+            if (diffDays === 1) return { cls: 'soon',     icon: '⏰', text: '明天到期' };
+            if (diffDays <= 3)  return { cls: 'soon',     icon: '⏰', text: `${diffDays} 天后到期` };
+            if (diffDays <= 7)  return { cls: 'upcoming', icon: '📅', text: `${diffDays} 天后到期` };
+            const m = due.getMonth() + 1;
+            const d = due.getDate();
+            return { cls: 'future', icon: '📅', text: `${m}月${d}日到期` };
+        }
+
+        // ====== WebSocket 连接 ======
+        function setStatus(status, text) {
+            connBadge.classList.remove('connected', 'connecting', 'disconnected');
+            connBadge.classList.add(status);
+            connText.textContent = text;
+            const online = status === 'connected';
+            input.disabled = !online;
+            addBtn.disabled = !online;
+            dueInput.disabled = !online;
+            input.placeholder = online
+                ? '输入新任务，回车添加...'
+                : '未连接到服务器，点击右上角徽章设置';
+        }
+
+        function connect() {
+            // 自动把 https:// 转成 wss://
+            let url = (wsUrl || defaultWsUrl).trim();
+            if (url.startsWith('https://')) url = 'wss://' + url.slice(8);
+            else if (url.startsWith('http://')) url = 'ws://' + url.slice(7);
+
+            setStatus('connecting', '连接中...');
+            clearTimeout(reconnectTimer);
+
+            try {
+                ws = new WebSocket(url);
+            } catch (e) {
+                setStatus('disconnected', '连接失败');
+                scheduleReconnect();
+                return;
+            }
+
+            ws.onopen = () => {
+                console.log('✓ 已连接到服务器');
+                setStatus('connected', '已连接');
+                // 首次连接时打个招呼，方便服务器日志看到不同用户
+                send({ type: 'hello', user: userId });
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const msg = JSON.parse(event.data);
+                    handleServerMessage(msg);
+                } catch (e) {
+                    console.error('消息解析失败', e);
+                }
+            };
+
+            ws.onerror = (err) => {
+                console.error('WebSocket 错误', err);
+            };
+
+            ws.onclose = () => {
+                console.log('✗ 与服务器断开');
+                setStatus('disconnected', '已断开');
+                onlineCount = 0;
+                onlineCountEl.textContent = '0';
+                scheduleReconnect();
+            };
+        }
+
+        function scheduleReconnect() {
+            clearTimeout(reconnectTimer);
+            reconnectTimer = setTimeout(() => {
+                console.log('尝试重新连接...');
+                connect();
+            }, 3000);
+        }
+
+        function send(msg) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify(msg));
+                return true;
+            }
+            return false;
+        }
+
+        function handleServerMessage(msg) {
+            switch (msg.type) {
+                case 'state':
+                    todos = Array.isArray(msg.todos) ? msg.todos : [];
+                    render();
+                    break;
+                case 'added':
+                    if (!todos.some(t => t.id === msg.todo.id)) {
+                        todos.push(msg.todo);
+                        render();
+                    }
+                    break;
+                case 'updated':
+                    {
+                        const idx = todos.findIndex(t => t.id === msg.todo.id);
+                        if (idx >= 0) {
+                            todos[idx] = msg.todo;
+                            render();
+                        }
+                    }
+                    break;
+                case 'deleted':
+                    todos = todos.filter(t => t.id !== msg.id);
+                    render();
+                    break;
+                case 'cleared':
+                    todos = [];
+                    render();
+                    break;
+                case 'online':
+                    onlineCount = msg.count;
+                    onlineCountEl.textContent = String(msg.count);
+                    onlineText.textContent = msg.count > 1
+                        ? `和 ${msg.count - 1} 个人一起搞定`
+                        : '把要做的事记下来';
+                    break;
+            }
+        }
+
+        // ====== 渲染 ======
+        function updateStats() {
+            const total = todos.length;
+            const done = todos.filter(t => t.completed).length;
+            totalCount.textContent = total;
+            doneCount.textContent = done;
+            pendingCount.textContent = total - done;
+        }
+
+        function render() {
+            const filtered = todos.filter(t => {
+                if (currentFilter === 'pending') return !t.completed;
+                if (currentFilter === 'completed') return t.completed;
+                return true;
+            });
+
+            if (filtered.length === 0) {
+                list.innerHTML = '<div class="empty-state">还没有任务，添加一个吧～</div>';
+            } else {
+                list.innerHTML = filtered.map(todo => {
+                    const due = getDueStatus(todo.dueDate);
+                    const dueHtml = due
+                        ? `<span class="todo-due ${due.cls}" data-action="edit-due" title="点击修改日期">${due.icon} ${escapeHtml(due.text)}</span>`
+                        : `<span class="todo-due no-date" data-action="edit-due" title="点击设置截止日期">📅 添加日期</span>`;
+                    return `
+                    <li class="todo-item ${todo.completed ? 'completed' : ''}" data-id="${escapeAttr(todo.id)}">
+                        <input
+                            type="checkbox"
+                            class="todo-checkbox"
+                            ${todo.completed ? 'checked' : ''}
+                        >
+                        <div class="todo-content">
+                            <span class="todo-text">${escapeHtml(todo.text)}</span>
+                            ${dueHtml}
+                        </div>
+                        <button class="delete-btn" title="删除">✕</button>
+                    </li>
+                `;
+                }).join('');
+            }
+            updateStats();
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+        function escapeAttr(str) {
+            return String(str).replace(/"/g, '&quot;');
+        }
+
+        // ====== 用户操作（通过 WebSocket 发送） ======
+        function addTodo() {
+            const text = input.value.trim();
+            if (!text) return;
+            const dueDate = dueInput.value || null;
+            if (send({ type: 'add', text, dueDate, user: userId })) {
+                input.value = '';
+                dueInput.value = '';
+                dueInput.classList.remove('has-value');
+            }
+        }
+
+        list.addEventListener('click', (e) => {
+            const item = e.target.closest('.todo-item');
+            if (!item) return;
+            const id = item.dataset.id;
+
+            if (e.target.classList.contains('todo-checkbox')) {
+                send({ type: 'update', id, updates: { completed: e.target.checked } });
+            } else if (e.target.classList.contains('delete-btn')) {
+                send({ type: 'delete', id });
+            } else if (e.target.closest('[data-action="edit-due"]')) {
+                openDueEditor(id, e.target.closest('[data-action="edit-due"]'));
+            }
+        });
+
+        // 点击日期 → 弹出隐藏的 date 选择器
+        function openDueEditor(id, el) {
+            const todo = todos.find(t => t.id === id);
+            if (!todo) return;
+            // 创建一个临时 date input
+            const existing = el.querySelector('input.due-edit');
+            if (existing) { existing.click(); return; }
+            const tmp = document.createElement('input');
+            tmp.type = 'date';
+            tmp.className = 'due-edit';
+            tmp.value = todo.dueDate || '';
+            tmp.style.cssText = 'position:absolute;opacity:0;pointer-events:none;width:1px;height:1px;';
+            el.style.position = 'relative';
+            el.appendChild(tmp);
+            // 触发原生选择器
+            const cleanup = () => {
+                if (tmp.parentNode) tmp.parentNode.removeChild(tmp);
+            };
+            tmp.addEventListener('change', () => {
+                const newVal = tmp.value || null;
+                cleanup();
+                if (newVal !== (todo.dueDate || null)) {
+                    send({ type: 'update', id, updates: { dueDate: newVal } });
+                }
+            });
+            tmp.addEventListener('blur', () => setTimeout(cleanup, 200));
+            setTimeout(() => tmp.showPicker ? tmp.showPicker() : tmp.click(), 50);
+        }
+
+        addBtn.addEventListener('click', addTodo);
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') addTodo();
+        });
+        dueInput.addEventListener('input', () => {
+            dueInput.classList.toggle('has-value', !!dueInput.value);
+        });
+
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                filterBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentFilter = btn.dataset.filter;
+                render();
+            });
+        });
+
+        // ====== 设置弹窗 ======
+        function showModal() {
+            wsUrlInput.value = (wsUrl === defaultWsUrl ? '' : wsUrl);
+            const hint = document.getElementById('default-url-hint');
+            if (hint) hint.textContent = defaultWsUrl;
+            modal.classList.add('active');
+            setTimeout(() => wsUrlInput.focus(), 50);
+        }
+        function hideModal() {
+            modal.classList.remove('active');
+        }
+
+        connBadge.addEventListener('click', showModal);
+        modalCancel.addEventListener('click', hideModal);
+        modalConnect.addEventListener('click', () => {
+            const url = wsUrlInput.value.trim();
+            // 留空 = 恢复默认同源地址
+            wsUrl = url || defaultWsUrl;
+            if (url) {
+                localStorage.setItem('todo_ws_url', wsUrl);
+            } else {
+                localStorage.removeItem('todo_ws_url');
+            }
+            hideModal();
+            if (ws) { try { ws.close(); } catch(e){} }
+            connect();
+        });
+        wsUrlInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') modalConnect.click();
+        });
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) hideModal();
+        });
+
+        // ====== 启动 ======
+        // 自动连接同源地址（无需配置）
+        connect();
+        render();
+        // 每分钟重渲染，让「今天到期」「已过期」状态自动更新
+        setInterval(render, 60 * 1000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "name": "todo-server",
+  "version": "2.0.0",
+  "description": "代办清单 - 本地运行，HTML + WebSocket 同源",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
