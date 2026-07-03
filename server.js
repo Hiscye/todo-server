@@ -1,7 +1,7 @@
 // ============================================
-// 当前版本：v1.0.0
-// 功能：基础同步 + 截止日期 + 优先级
-// 部署分支：main
+// 当前版本：v1.0.1 - 用户识别（显示谁添加/谁完成）
+// 上一个版本：v1.0.0
+// 部署分支：1.0.1-user-attribution
 // 部署地址：https://todo-server-production-bee1.up.railway.app
 // ============================================
 
@@ -166,7 +166,9 @@ function handleMessage(msg) {
                 completed: false,
                 priority: normalizePriority(msg.priority),
                 dueDate: isValidDate(msg.dueDate) ? msg.dueDate : null,
-                createdAt: new Date().toISOString()
+                createdAt: new Date().toISOString(),
+                createdBy: String(msg.user || msg.userId || '').slice(0, 50) || null,
+                createdByName: String(msg.userName || '').trim().slice(0, 30) || null
             };
             todos.push(todo);
             saveTodos();
@@ -174,6 +176,7 @@ function handleMessage(msg) {
             const tags = [];
             if (todo.priority) tags.push('[' + ({high:'高',medium:'中',low:'低'}[todo.priority]) + ']');
             if (todo.dueDate) tags.push('到期 ' + todo.dueDate);
+            if (todo.createdByName) tags.push('👤 ' + todo.createdByName);
             console.log(`  + 添加：${text}${tags.length ? ' ' + tags.join(' ') : ''}`);
             break;
         }
@@ -186,6 +189,12 @@ function handleMessage(msg) {
                     if (t) todo.text = t;
                 }
                 if (typeof msg.updates.completed === 'boolean') {
+                    // 只有从未完成变成完成时才记录完成人
+                    if (msg.updates.completed === true && !todo.completed) {
+                        todo.completedBy = String(msg.user || msg.userId || '').slice(0, 50) || null;
+                        todo.completedByName = String(msg.userName || '').trim().slice(0, 30) || null;
+                        todo.completedAt = new Date().toISOString();
+                    }
                     todo.completed = msg.updates.completed;
                 }
                 // dueDate 字段：传字符串设置，传 null/空字符串清除，其他忽略
@@ -207,6 +216,7 @@ function handleMessage(msg) {
             const tags = [];
             if (todo.priority) tags.push('[' + ({high:'高',medium:'中',low:'低'}[todo.priority]) + ']');
             if (todo.dueDate) tags.push('到期 ' + todo.dueDate);
+            if (todo.createdByName) tags.push('👤 ' + todo.createdByName);
             console.log(`  ~ 更新：${todo.text} [${todo.completed ? '✓' : ' '}]${tags.length ? ' ' + tags.join(' ') : ''}`);
             break;
         }

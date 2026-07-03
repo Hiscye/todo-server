@@ -1,6 +1,24 @@
 # 版本变更日志
 
-## v1.0.0（当前部署版本 · Railway 已上线）
+## v1.0.1 - 用户识别（谁添加 / 谁完成）🚀 NEW
+**分支：** `1.0.1-user-attribution`  
+**状态：** ✅ 实现完成，待 Railway 切换分支部署
+
+### ✨ 新增功能
+- ✅ 用户名设置（设置弹窗里可填）
+- ✅ 每个用户自动生成固定颜色头像（基于 userId 哈希）
+- ✅ 任务显示「添加者」：彩色头像 + 名字 + 相对时间（"小明 · 2小时前"）
+- ✅ 任务完成后切换显示「完成者」：绿色头像 + 名字 + 完成时间
+- ✅ 名字未设置时显示「匿名」，首字母作为头像
+
+### 🔧 后端改动
+- todo 数据结构新增字段：`createdBy` / `createdByName` / `completedBy` / `completedByName` / `completedAt`
+- add 消息记录创建者
+- update 消息（completed=true）记录完成者
+
+---
+
+## v1.0.0（稳定生产版 · Railway 当前部署）
 **部署时间：** 2026-07-03  
 **分支：** main  
 **部署地址：** https://todo-server-production-bee1.up.railway.app

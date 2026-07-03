@@ -478,6 +478,44 @@
         }
         .todo-priority.none:hover { color: #667eea; }
 
+        /* 用户识别 - 头像 + 名字 */
+        .todo-author {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 2px 6px 2px 2px;
+            font-size: 11px;
+            color: #4a5568;
+            background: #edf2f7;
+            border-radius: 10px;
+        }
+        .todo-author .avatar {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 10px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+        .todo-author.completed {
+            background: #c6f6d5;
+            color: #276749;
+        }
+        .todo-author.completed .avatar {
+            background: #48bb78;
+        }
+        .todo-author .author-time {
+            color: #a0aec0;
+            font-size: 10px;
+        }
+        .todo-author.completed .author-time {
+            color: #68d391;
+        }
+
         .delete-btn {
             background: transparent;
             border: none;
@@ -558,6 +596,19 @@
         }
         .modal input:focus {
             border-color: #667eea;
+        }
+        .settings-section {
+            margin-bottom: 18px;
+        }
+        .settings-section .settings-label {
+            display: block;
+            color: #2d3748;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        .settings-section p {
+            margin-bottom: 8px;
         }
         .modal-actions {
             display: flex;
@@ -652,23 +703,36 @@
     <!-- 设置弹窗 -->
     <div class="modal-overlay" id="settings-modal">
         <div class="modal">
-            <h3>⚙ 同步服务器设置</h3>
-            <p>
-                默认会连接当前页面的同源地址。如果你的服务器部署在其他域名，
-                在下面输入对应的 WebSocket 地址：
-            </p>
-            <p style="font-size: 12px; color: #718096;">
-                💡 格式：<code>ws://域名:端口</code> 或 <code>wss://域名:端口</code><br>
-                留空则使用同源地址：<code id="default-url-hint"></code>
-            </p>
-            <input
-                type="text"
-                id="ws-url-input"
-                placeholder="留空使用同源地址"
-            >
+            <h3>⚙ 设置</h3>
+
+            <div class="settings-section">
+                <label class="settings-label">👤 你的名字</label>
+                <p style="font-size: 12px; color: #718096;">
+                    会显示在「添加者 / 完成者」上，方便别人知道是谁做的
+                </p>
+                <input
+                    type="text"
+                    id="user-name-input"
+                    placeholder="例如：小明 / Alice"
+                    maxlength="20"
+                >
+            </div>
+
+            <div class="settings-section">
+                <label class="settings-label">🌐 服务器地址</label>
+                <p style="font-size: 12px; color: #718096;">
+                    默认同源地址：<code id="default-url-hint"></code>
+                </p>
+                <input
+                    type="text"
+                    id="ws-url-input"
+                    placeholder="留空使用同源地址"
+                >
+            </div>
+
             <div class="modal-actions">
                 <button class="modal-btn secondary" id="modal-cancel">取消</button>
-                <button class="modal-btn primary" id="modal-connect">连接</button>
+                <button class="modal-btn primary" id="modal-connect">保存</button>
             </div>
         </div>
     </div>
@@ -688,6 +752,39 @@
             userId = 'user-' + Math.random().toString(36).slice(2, 8);
             localStorage.setItem('todo_user_id', userId);
         }
+        let userName = localStorage.getItem('todo_user_name') || '';
+
+        // 给每个 userId 生成固定颜色和首字母（用于头像）
+        function hashCode(str) {
+            let h = 0;
+            for (let i = 0; i < str.length; i++) h = (h << 5) - h + str.charCodeAt(i) | 0;
+            return Math.abs(h);
+        }
+        const AVATAR_COLORS = [
+            '#f56565', '#ed8936', '#ecc94b', '#48bb78', '#38b2ac',
+            '#4299e1', '#667eea', '#9f7aea', '#ed64a6', '#a0aec0'
+        ];
+        function getUserColor(id) {
+            if (!id) return '#a0aec0';
+            return AVATAR_COLORS[hashCode(id) % AVATAR_COLORS.length];
+        }
+        function getInitial(name, id) {
+            if (name && name.trim()) return name.trim()[0].toUpperCase();
+            if (id) return id[0].toUpperCase();
+            return '?';
+        }
+        function formatRelativeTime(isoStr) {
+            if (!isoStr) return '';
+            const diff = Date.now() - new Date(isoStr).getTime();
+            const min = Math.floor(diff / 60000);
+            if (min < 1) return '刚刚';
+            if (min < 60) return min + '分钟前';
+            const hr = Math.floor(min / 60);
+            if (hr < 24) return hr + '小时前';
+            const day = Math.floor(hr / 24);
+            if (day < 7) return day + '天前';
+            return new Date(isoStr).toLocaleDateString('zh-CN');
+        }
 
         // ====== DOM 引用 ======
         const input = document.getElementById('todo-input');
@@ -705,6 +802,7 @@
         const onlineText = document.getElementById('online-text');
         const modal = document.getElementById('settings-modal');
         const wsUrlInput = document.getElementById('ws-url-input');
+        const userNameInput = document.getElementById('user-name-input');
         const modalConnect = document.getElementById('modal-connect');
         const modalCancel = document.getElementById('modal-cancel');
 
@@ -811,8 +909,10 @@
         }
 
         function send(msg) {
+            // 自动附加用户身份信息
+            const enriched = { ...msg, user: userId, userName: userName };
             if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify(msg));
+                ws.send(JSON.stringify(enriched));
                 return true;
             }
             return false;
@@ -866,6 +966,23 @@
             pendingCount.textContent = total - done;
         }
 
+        function renderAuthor(todo) {
+            // 已完成的任务显示「完成者」，否则显示「添加者」
+            const id = todo.completed && todo.completedBy ? todo.completedBy : todo.createdBy;
+            const name = todo.completed && todo.completedByName ? todo.completedByName : todo.createdByName;
+            const time = todo.completed && todo.completedAt ? todo.completedAt : todo.createdAt;
+            const role = todo.completed ? '完成' : '添加';
+            if (!id && !name) return '';
+            const initial = getInitial(name, id);
+            const color = getUserColor(id || name);
+            const displayName = name || '匿名';
+            const timeText = formatRelativeTime(time);
+            return `<span class="todo-author ${todo.completed ? 'completed' : ''}" title="${role}者">
+                <span class="avatar" style="background:${color}">${escapeHtml(initial)}</span>
+                ${escapeHtml(displayName)}<span class="author-time"> · ${timeText}</span>
+            </span>`;
+        }
+
         function render() {
             const filtered = todos.filter(t => {
                 if (currentFilter === 'pending') return !t.completed;
@@ -882,6 +999,7 @@
                         ? `<span class="todo-due ${due.cls}" data-action="edit-due" title="点击修改日期">${due.icon} ${escapeHtml(due.text)}</span>`
                         : `<span class="todo-due no-date" data-action="edit-due" title="点击设置截止日期">📅 添加日期</span>`;
                     const priorityCls = todo.priority ? `priority-${todo.priority}` : '';
+                    const authorHtml = renderAuthor(todo);
                     return `
                     <li class="todo-item ${todo.completed ? 'completed' : ''} ${priorityCls}" data-id="${escapeAttr(todo.id)}">
                         <input
@@ -892,6 +1010,7 @@
                         <div class="todo-content">
                             <span class="todo-text">${escapeHtml(todo.text)}</span>
                             <div class="todo-meta">
+                                ${authorHtml}
                                 ${getPriorityBadge(todo.priority)}
                                 ${dueHtml}
                             </div>
@@ -914,12 +1033,13 @@
         }
 
         // ====== 用户操作（通过 WebSocket 发送） ======
+        // 所有 send 调用都附加 userId + userName，让服务器知道是谁做的
         function addTodo() {
             const text = input.value.trim();
             if (!text) return;
             const dueDate = dueInput.value || null;
             const priority = selectedPriority;
-            if (send({ type: 'add', text, dueDate, priority, user: userId })) {
+            if (send({ type: 'add', text, dueDate, priority, user: userId, userName: userName })) {
                 input.value = '';
                 dueInput.value = '';
                 dueInput.classList.remove('has-value');
@@ -945,9 +1065,9 @@
             const id = item.dataset.id;
 
             if (e.target.classList.contains('todo-checkbox')) {
-                send({ type: 'update', id, updates: { completed: e.target.checked } });
+                send({ type: 'update', id, updates: { completed: e.target.checked }, user: userId, userName: userName });
             } else if (e.target.classList.contains('delete-btn')) {
-                send({ type: 'delete', id });
+                send({ type: 'delete', id, user: userId, userName: userName });
             } else if (e.target.closest('[data-action="edit-due"]')) {
                 openDueEditor(id, e.target.closest('[data-action="edit-due"]'));
             } else if (e.target.closest('[data-action="cycle-priority"]')) {
@@ -962,7 +1082,7 @@
             const order = [null, 'low', 'medium', 'high'];
             const idx = order.indexOf(todo.priority || null);
             const next = order[(idx + 1) % order.length];
-            send({ type: 'update', id, updates: { priority: next } });
+            send({ type: 'update', id, updates: { priority: next }, user: userId, userName: userName });
         }
 
         // 点击日期 → 弹出隐藏的 date 选择器
@@ -987,7 +1107,7 @@
                 const newVal = tmp.value || null;
                 cleanup();
                 if (newVal !== (todo.dueDate || null)) {
-                    send({ type: 'update', id, updates: { dueDate: newVal } });
+                    send({ type: 'update', id, updates: { dueDate: newVal }, user: userId, userName: userName });
                 }
             });
             tmp.addEventListener('blur', () => setTimeout(cleanup, 200));
@@ -1013,11 +1133,12 @@
 
         // ====== 设置弹窗 ======
         function showModal() {
+            userNameInput.value = userName || '';
             wsUrlInput.value = (wsUrl === defaultWsUrl ? '' : wsUrl);
             const hint = document.getElementById('default-url-hint');
             if (hint) hint.textContent = defaultWsUrl;
             modal.classList.add('active');
-            setTimeout(() => wsUrlInput.focus(), 50);
+            setTimeout(() => userNameInput.focus(), 50);
         }
         function hideModal() {
             modal.classList.remove('active');
@@ -1026,6 +1147,17 @@
         connBadge.addEventListener('click', showModal);
         modalCancel.addEventListener('click', hideModal);
         modalConnect.addEventListener('click', () => {
+            // 保存用户名
+            const newName = userNameInput.value.trim();
+            if (newName !== userName) {
+                userName = newName;
+                if (newName) {
+                    localStorage.setItem('todo_user_name', userName);
+                } else {
+                    localStorage.removeItem('todo_user_name');
+                }
+            }
+            // 保存服务器地址
             const url = wsUrlInput.value.trim();
             // 留空 = 恢复默认同源地址
             wsUrl = url || defaultWsUrl;
@@ -1037,6 +1169,10 @@
             hideModal();
             if (ws) { try { ws.close(); } catch(e){} }
             connect();
+        });
+        // 用户名输入框回车 → 保存
+        userNameInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') modalConnect.click();
         });
         wsUrlInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') modalConnect.click();
