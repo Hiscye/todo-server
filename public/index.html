@@ -516,6 +516,84 @@
             color: #68d391;
         }
 
+        /* 在线用户面板 */
+        .online-panel {
+            background: #f7fafc;
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 16px;
+            border: 1px solid #e2e8f0;
+        }
+        .online-title {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #4a5568;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .online-title .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background: #48bb78;
+            border-radius: 50%;
+            box-shadow: 0 0 0 3px rgba(72, 187, 120, 0.25);
+            animation: pulseGreen 1.6s infinite;
+        }
+        @keyframes pulseGreen {
+            0%, 100% { box-shadow: 0 0 0 3px rgba(72, 187, 120, 0.25); }
+            50% { box-shadow: 0 0 0 6px rgba(72, 187, 120, 0.1); }
+        }
+        .online-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .online-user {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 9px 3px 3px;
+            background: white;
+            border-radius: 14px;
+            border: 1px solid #e2e8f0;
+            font-size: 12px;
+            color: #2d3748;
+            cursor: help;
+            transition: transform 0.15s;
+        }
+        .online-user:hover {
+            transform: translateY(-1px);
+            border-color: #cbd5e0;
+        }
+        .online-user .avatar {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 11px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+        .online-user .me-badge {
+            background: #667eea;
+            color: white;
+            font-size: 9px;
+            padding: 1px 5px;
+            border-radius: 6px;
+            margin-left: 2px;
+            font-weight: 700;
+        }
+        .online-empty {
+            color: #a0aec0;
+            font-size: 12px;
+            padding: 4px 0;
+        }
+
         .delete-btn {
             background: transparent;
             border: none;
@@ -746,6 +824,16 @@
             <span>在线：<strong id="online-count">0</strong></span>
         </div>
 
+        <div class="online-panel" id="online-panel">
+            <div class="online-title">
+                <span class="pulse-dot"></span>
+                当前在线 (<span id="online-users-count">0</span>)
+            </div>
+            <div class="online-list" id="online-list">
+                <div class="online-empty">连接中...</div>
+            </div>
+        </div>
+
         <div class="filters">
             <button class="filter-btn active" data-filter="all">全部</button>
             <button class="filter-btn" data-filter="pending">未完成</button>
@@ -905,6 +993,7 @@
             input.placeholder = (status === 'connected')
                 ? '输入新任务，回车添加...'
                 : '未连接到服务器，点击右上角徽章设置';
+            // 重新评估 UI 锁定状态（连接状态 + 名字状态都要满足）
             applyUserState();
         }
 
@@ -1008,7 +1097,39 @@
                         ? `和 ${msg.count - 1} 个人一起搞定`
                         : '把要做的事记下来';
                     break;
+                case 'online-list':
+                    renderOnlineList(msg.users || []);
+                    break;
             }
+        }
+
+        // 当前已知的在线用户列表
+        let onlineUsers = [];
+
+        function renderOnlineList(users) {
+            onlineUsers = users;
+            const listEl = document.getElementById('online-list');
+            const countEl = document.getElementById('online-users-count');
+            const statCount = document.getElementById('online-count');
+            if (countEl) countEl.textContent = users.length;
+            if (statCount) statCount.textContent = users.length;
+            if (!listEl) return;
+            if (users.length === 0) {
+                listEl.innerHTML = '<div class="online-empty">暂时没有其他在线用户</div>';
+                return;
+            }
+            listEl.innerHTML = users.map(u => {
+                const isMe = u.id === userId;
+                const initial = getInitial(u.name, u.id);
+                const color = getUserColor(u.id);
+                const tooltip = `${escapeHtml(u.name)} · IP: ${escapeHtml(u.ip)} · ${isMe ? '（你）' : ''}`;
+                return `
+                <span class="online-user" title="${tooltip}">
+                    <span class="avatar" style="background:${color}">${escapeHtml(initial)}</span>
+                    ${escapeHtml(u.name)}
+                    ${isMe ? '<span class="me-badge">我</span>' : ''}
+                </span>`;
+            }).join('');
         }
 
         // ====== 渲染 ======
@@ -1186,24 +1307,25 @@
         });
 
         // ====== 设置弹窗 ======
-        let modalIsRequired = false;
+        let modalIsRequired = false;  // 当前弹窗是否处于「必须填写名字」模式
 
         function applyUserState() {
             const banner = document.getElementById('name-banner');
             const inputArea = document.getElementById('input-area');
             const prioritySelector = document.getElementById('priority-selector');
             const hasName = !!(userName && userName.trim());
-            const online = ws && ws.readyState === WebSocket.OPEN;
 
             if (hasName) {
+                // 有名字 → 解锁
                 banner.classList.remove('show');
                 inputArea.classList.remove('locked');
                 prioritySelector.classList.remove('locked');
-                input.disabled = !online;
-                addBtn.disabled = !online;
-                dueInput.disabled = !online;
-                priorityBtns.forEach(b => b.disabled = !online);
+                input.disabled = !(ws && ws.readyState === WebSocket.OPEN);
+                addBtn.disabled = !(ws && ws.readyState === WebSocket.OPEN);
+                dueInput.disabled = !(ws && ws.readyState === WebSocket.OPEN);
+                priorityBtns.forEach(b => b.disabled = !(ws && ws.readyState === WebSocket.OPEN));
             } else {
+                // 无名字 → 锁定添加区域
                 banner.classList.add('show');
                 inputArea.classList.add('locked');
                 prioritySelector.classList.add('locked');
@@ -1237,14 +1359,16 @@
             setTimeout(() => userNameInput.focus(), 50);
         }
         function hideModal() {
-            if (modalIsRequired) return;
+            if (modalIsRequired) return;  // 必填模式下不允许关闭
             modal.classList.remove('active');
         }
 
-        connBadge.addEventListener('click', () => showModal(false));
+        connBadge.addEventListener('click', () => showModal(false));  // 普通模式下点徽章可以打开
         modalCancel.addEventListener('click', hideModal);
         modalConnect.addEventListener('click', () => {
+            // 保存用户名
             const newName = userNameInput.value.trim();
+            // 必填模式下名字不能为空
             if (modalIsRequired && !newName) {
                 userNameInput.focus();
                 userNameInput.style.borderColor = '#f56565';
@@ -1258,8 +1382,9 @@
                 } else {
                     localStorage.removeItem('todo_user_name');
                 }
-                applyUserState();
+                applyUserState();  // 立即更新 UI 锁定状态
             }
+            // 保存服务器地址
             const url = wsUrlInput.value.trim();
             wsUrl = url || defaultWsUrl;
             if (url) {
@@ -1272,23 +1397,29 @@
             if (ws) { try { ws.close(); } catch(e){} }
             connect();
         });
+        // 用户名输入框回车 → 保存
         userNameInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') modalConnect.click();
         });
         wsUrlInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') modalConnect.click();
         });
+        // 必填模式下，点击遮罩不关闭
         modal.addEventListener('click', (e) => {
             if (e.target === modal) hideModal();
         });
+        // banner 按钮点击 → 打开必填弹窗
         document.getElementById('banner-set-name').addEventListener('click', () => {
             showModal(true);
         });
 
         // ====== 启动 ======
+        // 先评估用户状态（无名字会锁定添加区域）
         applyUserState();
+        // 自动连接同源地址（无需配置）
         connect();
         render();
+        // 每分钟重渲染，让「今天到期」「已过期」状态自动更新
         setInterval(render, 60 * 1000);
         // 第一次访问时，如果没设置名字，强制弹出设置窗口（必填模式）
         if (!userName) {

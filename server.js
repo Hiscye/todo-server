@@ -1,8 +1,17 @@
 // ============================================
-// 当前版本：v1.0.1 - 用户识别（显示谁添加/谁完成）
-// 上一个版本：v1.0.0
-// 部署分支：1.0.1-user-attribution
+// 当前版本：v1.0.2 - 实时在线用户列表 + 后台 IP 日志
+// 上一个版本：v1.0.1
+// 部署分支：1.0.2-online-users
 // 部署地址：https://todo-server-production-bee1.up.railway.app
+// 改动说明：
+//   1. 维护 onlineUsers Map 追踪所有连接的用户
+//   2. getPublicIp() 提取公网 IP（适配 Railway/Cloudflare 代理）
+//   3. registerOnline/unregisterOnline/broadcastOnlineList 函数
+//   4. hello 消息时注册用户，断开时注销
+//   5. /status 接口返回 onlineUsers 列表
+// ============================================
+//   5. 实时显示在线用户列表（头像 + 名字 + IP）
+//   6. 后台日志记录每个用户的公网 IP（X-Forwarded-For）
 // ============================================
 
 // 代办清单实时同步服务器
@@ -35,6 +44,64 @@ function newId() {
     return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 9);
 }
 
+// 提取公网 IP（适配 Railway/Cloudflare 等代理环境）
+function getPublicIp(req) {
+    const xff = req.headers['x-forwarded-for'];
+    if (xff) {
+        return xff.split(',')[0].trim();
+    }
+    const realIp = req.headers['x-real-ip'];
+    if (realIp) return realIp;
+    const cfIp = req.headers['cf-connecting-ip'];
+    if (cfIp) return cfIp;
+    let ip = req.socket.remoteAddress || 'unknown';
+    // IPv6 格式的 IPv4 (::ffff:1.2.3.4) 简化
+    if (ip.startsWith('::ffff:')) ip = ip.slice(7);
+    return ip;
+}
+
+// 在线用户追踪：userId -> { id, name, ip, since, connections: Set<ws> }
+const onlineUsers = new Map();
+
+function serializeUser(u) {
+    return { id: u.id, name: u.name, ip: u.ip, since: new Date(u.since).toISOString() };
+}
+
+function broadcastOnlineList() {
+    const users = Array.from(onlineUsers.values()).map(serializeUser);
+    broadcast({ type: 'online-list', users, count: users.length });
+}
+
+function registerOnline(userId, userName, ip, ws) {
+    if (!userId) return;
+    let u = onlineUsers.get(userId);
+    if (!u) {
+        u = { id: userId, name: userName || '匿名', ip, since: Date.now(), connections: new Set() };
+        onlineUsers.set(userId, u);
+        console.log(`  ✓ 用户加入: ${u.name} [IP: ${ip}]`);
+    } else {
+        // 多端连接，更新名字
+        if (userName && userName !== u.name) {
+            console.log(`  ✎ 用户改名: ${u.name} → ${userName}`);
+            u.name = userName;
+        }
+    }
+    u.connections.add(ws);
+}
+
+function unregisterOnline(ws) {
+    for (const u of onlineUsers.values()) {
+        if (u.connections.has(ws)) {
+            u.connections.delete(ws);
+            if (u.connections.size === 0) {
+                onlineUsers.delete(u.id);
+                console.log(`  ✗ 用户离开: ${u.name} [IP: ${u.ip}]`);
+            }
+            return;
+        }
+    }
+}
+
 // 一个简单的 HTTP + 静态文件服务器
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const MIME = {
@@ -58,6 +125,7 @@ const server = http.createServer((req, res) => {
             status: 'ok',
             todos: todos.length,
             clients: wss ? wss.clients.size : 0,
+            onlineUsers: Array.from(onlineUsers.values()).map(serializeUser),
             uptime: Math.round(process.uptime()) + 's'
         }, null, 2));
         return;
@@ -105,17 +173,17 @@ function broadcast(msg) {
 }
 
 function broadcastOnline() {
-    broadcast({ type: 'online', count: wss.clients.size });
+    // 已废弃：保留作为向后兼容，但实际不再使用
+    const users = Array.from(onlineUsers.values()).map(serializeUser);
+    broadcast({ type: 'online', count: users.length });
 }
 
 wss.on('connection', (ws, req) => {
-    const ip = req.socket.remoteAddress;
-    console.log(`[${new Date().toLocaleTimeString()}] 新连接：${ip}，当前在线 ${wss.clients.size} 人`);
+    const ip = getPublicIp(req);
+    console.log(`[${new Date().toLocaleTimeString()}] 新连接：${ip}，活跃连接 ${wss.clients.size}`);
 
     // 给新连接的客户端发送完整状态
     ws.send(JSON.stringify({ type: 'state', todos }));
-    // 通知所有人最新在线人数
-    broadcastOnline();
 
     ws.on('message', (raw) => {
         let msg;
@@ -126,15 +194,18 @@ wss.on('connection', (ws, req) => {
             return;
         }
         if (msg.type === 'hello') {
-            console.log(`  · 用户标识：${msg.user || '(未设置)'}`);
+            // 注册/更新用户
+            registerOnline(msg.user, msg.userName, ip, ws);
+            broadcastOnlineList();
             return;
         }
         handleMessage(msg);
     });
 
     ws.on('close', () => {
-        console.log(`[${new Date().toLocaleTimeString()}] 断开连接，剩余 ${wss.clients.size} 人`);
-        broadcastOnline();
+        console.log(`[${new Date().toLocaleTimeString()}] 连接断开 (${ip})，剩余 ${wss.clients.size}`);
+        unregisterOnline(ws);
+        broadcastOnlineList();
     });
 
     ws.on('error', (err) => {
