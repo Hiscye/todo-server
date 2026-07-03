@@ -637,6 +637,56 @@
         .modal-btn.secondary:hover {
             background: #e2e8f0;
         }
+
+        /* 强制实名模式样式 */
+        .modal-overlay.required .modal {
+            border: 2px solid #f56565;
+        }
+        .modal-overlay.required .modal h3::after {
+            content: ' *必填';
+            color: #f56565;
+            font-size: 13px;
+            font-weight: normal;
+        }
+        .modal.required-mode .modal-btn.secondary {
+            display: none;
+        }
+
+        /* 匿名模式 - 添加区域被锁定 */
+        .input-area.locked,
+        .priority-selector.locked {
+            opacity: 0.4;
+            pointer-events: none;
+            position: relative;
+        }
+        .name-required-banner {
+            display: none;
+            background: #fff5f5;
+            border: 1px solid #feb2b2;
+            color: #c53030;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        .name-required-banner.show {
+            display: block;
+        }
+        .name-required-banner button {
+            background: #f56565;
+            color: white;
+            border: none;
+            padding: 4px 12px;
+            border-radius: 4px;
+            margin-left: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .name-required-banner button:hover {
+            background: #e53e3e;
+        }
     </style>
 </head>
 <body>
@@ -649,7 +699,12 @@
         <h1>📋 代办清单</h1>
         <p class="subtitle">把要做的事记下来，<span id="online-text">一起搞定它</span></p>
 
-        <div class="input-area">
+        <div class="name-required-banner" id="name-banner">
+            ⚠️ 请先设置你的名字才能添加任务
+            <button id="banner-set-name">立即设置</button>
+        </div>
+
+        <div class="input-area" id="input-area">
             <input
                 type="text"
                 id="todo-input"
@@ -734,6 +789,9 @@
                 <button class="modal-btn secondary" id="modal-cancel">取消</button>
                 <button class="modal-btn primary" id="modal-connect">保存</button>
             </div>
+            <p id="required-hint" style="display:none; font-size: 12px; color: #e53e3e; margin-top: -8px; margin-bottom: 8px;">
+                ⚠️ 必须填写名字才能使用
+            </p>
         </div>
     </div>
 
@@ -844,14 +902,10 @@
             connBadge.classList.remove('connected', 'connecting', 'disconnected');
             connBadge.classList.add(status);
             connText.textContent = text;
-            const online = status === 'connected';
-            input.disabled = !online;
-            addBtn.disabled = !online;
-            dueInput.disabled = !online;
-            priorityBtns.forEach(b => b.disabled = !online);
-            input.placeholder = online
+            input.placeholder = (status === 'connected')
                 ? '输入新任务，回车添加...'
                 : '未连接到服务器，点击右上角徽章设置';
+            applyUserState();
         }
 
         function connect() {
@@ -1132,23 +1186,71 @@
         });
 
         // ====== 设置弹窗 ======
-        function showModal() {
+        let modalIsRequired = false;
+
+        function applyUserState() {
+            const banner = document.getElementById('name-banner');
+            const inputArea = document.getElementById('input-area');
+            const prioritySelector = document.getElementById('priority-selector');
+            const hasName = !!(userName && userName.trim());
+            const online = ws && ws.readyState === WebSocket.OPEN;
+
+            if (hasName) {
+                banner.classList.remove('show');
+                inputArea.classList.remove('locked');
+                prioritySelector.classList.remove('locked');
+                input.disabled = !online;
+                addBtn.disabled = !online;
+                dueInput.disabled = !online;
+                priorityBtns.forEach(b => b.disabled = !online);
+            } else {
+                banner.classList.add('show');
+                inputArea.classList.add('locked');
+                prioritySelector.classList.add('locked');
+                input.disabled = true;
+                addBtn.disabled = true;
+                dueInput.disabled = true;
+                priorityBtns.forEach(b => b.disabled = true);
+            }
+        }
+
+        function showModal(required = false) {
+            modalIsRequired = required;
             userNameInput.value = userName || '';
             wsUrlInput.value = (wsUrl === defaultWsUrl ? '' : wsUrl);
             const hint = document.getElementById('default-url-hint');
             if (hint) hint.textContent = defaultWsUrl;
+            const requiredHint = document.getElementById('required-hint');
+            const cancelBtn = document.getElementById('modal-cancel');
+            if (required) {
+                modal.classList.add('required');
+                modal.classList.add('required-mode');
+                if (requiredHint) requiredHint.style.display = 'block';
+                if (cancelBtn) cancelBtn.style.display = 'none';
+            } else {
+                modal.classList.remove('required');
+                modal.classList.remove('required-mode');
+                if (requiredHint) requiredHint.style.display = 'none';
+                if (cancelBtn) cancelBtn.style.display = '';
+            }
             modal.classList.add('active');
             setTimeout(() => userNameInput.focus(), 50);
         }
         function hideModal() {
+            if (modalIsRequired) return;
             modal.classList.remove('active');
         }
 
-        connBadge.addEventListener('click', showModal);
+        connBadge.addEventListener('click', () => showModal(false));
         modalCancel.addEventListener('click', hideModal);
         modalConnect.addEventListener('click', () => {
-            // 保存用户名
             const newName = userNameInput.value.trim();
+            if (modalIsRequired && !newName) {
+                userNameInput.focus();
+                userNameInput.style.borderColor = '#f56565';
+                setTimeout(() => userNameInput.style.borderColor = '', 1500);
+                return;
+            }
             if (newName !== userName) {
                 userName = newName;
                 if (newName) {
@@ -1156,21 +1258,20 @@
                 } else {
                     localStorage.removeItem('todo_user_name');
                 }
+                applyUserState();
             }
-            // 保存服务器地址
             const url = wsUrlInput.value.trim();
-            // 留空 = 恢复默认同源地址
             wsUrl = url || defaultWsUrl;
             if (url) {
                 localStorage.setItem('todo_ws_url', wsUrl);
             } else {
                 localStorage.removeItem('todo_ws_url');
             }
+            modalIsRequired = false;
             hideModal();
             if (ws) { try { ws.close(); } catch(e){} }
             connect();
         });
-        // 用户名输入框回车 → 保存
         userNameInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') modalConnect.click();
         });
@@ -1180,13 +1281,19 @@
         modal.addEventListener('click', (e) => {
             if (e.target === modal) hideModal();
         });
+        document.getElementById('banner-set-name').addEventListener('click', () => {
+            showModal(true);
+        });
 
         // ====== 启动 ======
-        // 自动连接同源地址（无需配置）
+        applyUserState();
         connect();
         render();
-        // 每分钟重渲染，让「今天到期」「已过期」状态自动更新
         setInterval(render, 60 * 1000);
+        // 第一次访问时，如果没设置名字，强制弹出设置窗口（必填模式）
+        if (!userName) {
+            setTimeout(() => showModal(true), 600);
+        }
     </script>
 </body>
 </html>
