@@ -143,6 +143,11 @@ function isValidDate(s) {
     return !isNaN(d.getTime());
 }
 
+const VALID_PRIORITIES = ['high', 'medium', 'low'];
+function normalizePriority(p) {
+    return VALID_PRIORITIES.includes(p) ? p : null;
+}
+
 function handleMessage(msg) {
     switch (msg.type) {
         case 'add': {
@@ -152,13 +157,17 @@ function handleMessage(msg) {
                 id: newId(),
                 text,
                 completed: false,
+                priority: normalizePriority(msg.priority),
                 dueDate: isValidDate(msg.dueDate) ? msg.dueDate : null,
                 createdAt: new Date().toISOString()
             };
             todos.push(todo);
             saveTodos();
             broadcast({ type: 'added', todo });
-            console.log(`  + 添加：${text}${todo.dueDate ? ' (到期 ' + todo.dueDate + ')' : ''}`);
+            const tags = [];
+            if (todo.priority) tags.push('[' + ({high:'高',medium:'中',low:'低'}[todo.priority]) + ']');
+            if (todo.dueDate) tags.push('到期 ' + todo.dueDate);
+            console.log(`  + 添加：${text}${tags.length ? ' ' + tags.join(' ') : ''}`);
             break;
         }
         case 'update': {
@@ -181,10 +190,17 @@ function handleMessage(msg) {
                         todo.dueDate = v;
                     }
                 }
+                // priority 字段：传字符串设置，传 null 清除，其他忽略
+                if ('priority' in msg.updates) {
+                    todo.priority = normalizePriority(msg.updates.priority);
+                }
             }
             saveTodos();
             broadcast({ type: 'updated', todo });
-            console.log(`  ~ 更新：${todo.text} [${todo.completed ? '✓' : ' '}]${todo.dueDate ? ' 到期 ' + todo.dueDate : ''}`);
+            const tags = [];
+            if (todo.priority) tags.push('[' + ({high:'高',medium:'中',low:'低'}[todo.priority]) + ']');
+            if (todo.dueDate) tags.push('到期 ' + todo.dueDate);
+            console.log(`  ~ 更新：${todo.text} [${todo.completed ? '✓' : ' '}]${tags.length ? ' ' + tags.join(' ') : ''}`);
             break;
         }
         case 'delete': {

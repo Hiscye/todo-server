@@ -146,6 +146,61 @@
             border-color: #cbd5e0;
         }
 
+        /* 优先级选择器 */
+        .priority-selector {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 16px;
+            align-items: center;
+        }
+        .priority-selector label {
+            font-size: 12px;
+            color: #718096;
+            margin-right: 4px;
+        }
+        .priority-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 10px;
+            border: 2px solid transparent;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            background: white;
+            transition: all 0.15s;
+            color: #4a5568;
+            font-family: inherit;
+        }
+        .priority-btn .p-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        .priority-btn.p-high .p-dot { background: #f56565; }
+        .priority-btn.p-medium .p-dot { background: #ed8936; }
+        .priority-btn.p-low .p-dot { background: #48bb78; }
+        .priority-btn.p-none .p-dot {
+            background: transparent;
+            border: 1px dashed #cbd5e0;
+        }
+        .priority-btn:hover {
+            background: #f7fafc;
+        }
+        .priority-btn.active {
+            background: #edf2f7;
+            border-color: currentColor;
+            font-weight: 600;
+        }
+        .priority-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .priority-btn.p-high.active { color: #c53030; }
+        .priority-btn.p-medium.active { color: #c05621; }
+        .priority-btn.p-low.active { color: #276749; }
+        .priority-btn.p-none.active { color: #4a5568; }
+
         .input-hint {
             font-size: 11px;
             color: #a0aec0;
@@ -239,7 +294,37 @@
             margin-bottom: 8px;
             transition: all 0.2s;
             animation: slideIn 0.3s ease;
+            position: relative;
+            overflow: hidden;
         }
+
+        /* 优先级左侧色条 */
+        .todo-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: transparent;
+            transition: background 0.2s;
+        }
+        .todo-item.priority-high::before { background: #f56565; }
+        .todo-item.priority-medium::before { background: #ed8936; }
+        .todo-item.priority-low::before { background: #48bb78; }
+
+        .todo-item.priority-high {
+            background: #fff5f5;
+        }
+        .todo-item.priority-medium {
+            background: #fffaf0;
+        }
+        .todo-item.priority-low {
+            background: #f0fff4;
+        }
+        .todo-item.priority-high:hover { background: #fed7d7; }
+        .todo-item.priority-medium:hover { background: #feebc8; }
+        .todo-item.priority-low:hover { background: #c6f6d5; }
 
         @keyframes slideIn {
             from {
@@ -263,6 +348,10 @@
 
         .todo-item.completed .todo-due {
             opacity: 0.5;
+        }
+
+        .todo-item.completed::before {
+            opacity: 0.4;
         }
 
         .todo-content {
@@ -349,6 +438,45 @@
         .todo-due.no-date:hover {
             color: #667eea;
         }
+
+        /* 优先级徽章 */
+        .todo-meta {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 4px;
+            flex-wrap: wrap;
+        }
+        .todo-priority {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            font-size: 11px;
+            border-radius: 4px;
+            cursor: pointer;
+            user-select: none;
+            font-weight: 600;
+            transition: opacity 0.15s;
+        }
+        .todo-priority:hover { opacity: 0.75; }
+        .todo-priority .p-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        .todo-priority.high { background: #fed7d7; color: #c53030; }
+        .todo-priority.high .p-dot { background: #f56565; }
+        .todo-priority.medium { background: #feebc8; color: #c05621; }
+        .todo-priority.medium .p-dot { background: #ed8936; }
+        .todo-priority.low { background: #c6f6d5; color: #276749; }
+        .todo-priority.low .p-dot { background: #48bb78; }
+        .todo-priority.none {
+            color: #cbd5e0;
+            background: transparent;
+            font-weight: normal;
+        }
+        .todo-priority.none:hover { color: #667eea; }
 
         .delete-btn {
             background: transparent;
@@ -486,7 +614,24 @@
             >
             <button id="add-btn" disabled>添加</button>
         </div>
-        <div class="input-hint">💡 日期可选，不选表示无截止时间</div>
+
+        <div class="priority-selector" id="priority-selector">
+            <label>优先级：</label>
+            <button type="button" class="priority-btn p-high" data-priority="high" disabled>
+                <span class="p-dot"></span>高
+            </button>
+            <button type="button" class="priority-btn p-medium" data-priority="medium" disabled>
+                <span class="p-dot"></span>中
+            </button>
+            <button type="button" class="priority-btn p-low" data-priority="low" disabled>
+                <span class="p-dot"></span>低
+            </button>
+            <button type="button" class="priority-btn p-none active" data-priority="none" disabled>
+                <span class="p-dot"></span>无
+            </button>
+        </div>
+
+        <div class="input-hint">💡 日期和优先级都可选，点击任务上的标签可随时修改</div>
 
         <div class="stats">
             <span>总计：<strong id="total-count">0</strong></span>
@@ -548,6 +693,7 @@
         const input = document.getElementById('todo-input');
         const addBtn = document.getElementById('add-btn');
         const dueInput = document.getElementById('due-input');
+        const priorityBtns = document.querySelectorAll('.priority-btn');
         const list = document.getElementById('todo-list');
         const totalCount = document.getElementById('total-count');
         const doneCount = document.getElementById('done-count');
@@ -580,6 +726,21 @@
             return { cls: 'future', icon: '📅', text: `${m}月${d}日到期` };
         }
 
+        const PRIORITY_MAP = {
+            high:   { cls: 'high',   icon: '🔴', text: '高' },
+            medium: { cls: 'medium', icon: '🟡', text: '中' },
+            low:    { cls: 'low',    icon: '🟢', text: '低' }
+        };
+        let selectedPriority = null;  // 当前在添加表单中选中的优先级
+
+        function getPriorityBadge(p) {
+            const info = PRIORITY_MAP[p];
+            if (!info) {
+                return `<span class="todo-priority none" data-action="cycle-priority" title="点击设置优先级">＋ 优先级</span>`;
+            }
+            return `<span class="todo-priority ${info.cls}" data-action="cycle-priority" title="点击修改优先级">${info.icon} ${info.text}</span>`;
+        }
+
         // ====== WebSocket 连接 ======
         function setStatus(status, text) {
             connBadge.classList.remove('connected', 'connecting', 'disconnected');
@@ -589,6 +750,7 @@
             input.disabled = !online;
             addBtn.disabled = !online;
             dueInput.disabled = !online;
+            priorityBtns.forEach(b => b.disabled = !online);
             input.placeholder = online
                 ? '输入新任务，回车添加...'
                 : '未连接到服务器，点击右上角徽章设置';
@@ -719,8 +881,9 @@
                     const dueHtml = due
                         ? `<span class="todo-due ${due.cls}" data-action="edit-due" title="点击修改日期">${due.icon} ${escapeHtml(due.text)}</span>`
                         : `<span class="todo-due no-date" data-action="edit-due" title="点击设置截止日期">📅 添加日期</span>`;
+                    const priorityCls = todo.priority ? `priority-${todo.priority}` : '';
                     return `
-                    <li class="todo-item ${todo.completed ? 'completed' : ''}" data-id="${escapeAttr(todo.id)}">
+                    <li class="todo-item ${todo.completed ? 'completed' : ''} ${priorityCls}" data-id="${escapeAttr(todo.id)}">
                         <input
                             type="checkbox"
                             class="todo-checkbox"
@@ -728,7 +891,10 @@
                         >
                         <div class="todo-content">
                             <span class="todo-text">${escapeHtml(todo.text)}</span>
-                            ${dueHtml}
+                            <div class="todo-meta">
+                                ${getPriorityBadge(todo.priority)}
+                                ${dueHtml}
+                            </div>
                         </div>
                         <button class="delete-btn" title="删除">✕</button>
                     </li>
@@ -752,12 +918,26 @@
             const text = input.value.trim();
             if (!text) return;
             const dueDate = dueInput.value || null;
-            if (send({ type: 'add', text, dueDate, user: userId })) {
+            const priority = selectedPriority;
+            if (send({ type: 'add', text, dueDate, priority, user: userId })) {
                 input.value = '';
                 dueInput.value = '';
                 dueInput.classList.remove('has-value');
+                // 重置优先级选择
+                selectedPriority = null;
+                priorityBtns.forEach(b => b.classList.toggle('active', b.dataset.priority === 'none'));
             }
         }
+
+        // 优先级按钮点击（添加表单）
+        priorityBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (btn.disabled) return;
+                const p = btn.dataset.priority;
+                selectedPriority = p === 'none' ? null : p;
+                priorityBtns.forEach(b => b.classList.toggle('active', b === btn));
+            });
+        });
 
         list.addEventListener('click', (e) => {
             const item = e.target.closest('.todo-item');
@@ -770,8 +950,20 @@
                 send({ type: 'delete', id });
             } else if (e.target.closest('[data-action="edit-due"]')) {
                 openDueEditor(id, e.target.closest('[data-action="edit-due"]'));
+            } else if (e.target.closest('[data-action="cycle-priority"]')) {
+                cyclePriority(id);
             }
         });
+
+        // 点击优先级徽章 → 循环切换 高 → 中 → 低 → 无
+        function cyclePriority(id) {
+            const todo = todos.find(t => t.id === id);
+            if (!todo) return;
+            const order = [null, 'low', 'medium', 'high'];
+            const idx = order.indexOf(todo.priority || null);
+            const next = order[(idx + 1) % order.length];
+            send({ type: 'update', id, updates: { priority: next } });
+        }
 
         // 点击日期 → 弹出隐藏的 date 选择器
         function openDueEditor(id, el) {
