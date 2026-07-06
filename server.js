@@ -1,8 +1,13 @@
 // ============================================
-// 当前版本：v1.0.0
-// 功能：基础同步 + 截止日期 + 优先级
-// 部署分支：main
+// 当前版本：v1.4.0 - 花哨动态背景 + 标签系统 + 排序
+// 上一个版本：v1.3.0
+// 部署分支：v1.4.0-fancy-tags
 // 部署地址：https://todo-server-production-bee1.up.railway.app
+// 改动说明：
+//   1. 背景：紫色湖泊日落照片 + 动态渐变叠加
+//   2. 标签系统：每任务可加多个彩色标签，按标签筛选
+//   3. 多种排序：按创建时间 / 截止日期 / 优先级 / 标题
+//   4. 标签预设（工作/生活/学习/紧急）
 // ============================================
 
 // 代办清单实时同步服务器
@@ -155,6 +160,22 @@ function normalizePriority(p) {
     return VALID_PRIORITIES.includes(p) ? p : null;
 }
 
+// 标准化标签
+function normalizeTags(arr) {
+    if (!Array.isArray(arr)) return [];
+    const seen = new Set();
+    const result = [];
+    for (const t of arr) {
+        if (typeof t !== 'string') continue;
+        const trimmed = t.trim().slice(0, 20);
+        if (!trimmed || seen.has(trimmed)) continue;
+        seen.add(trimmed);
+        result.push(trimmed);
+        if (result.length >= 10) break;
+    }
+    return result;
+}
+
 function handleMessage(msg) {
     switch (msg.type) {
         case 'add': {
@@ -166,6 +187,7 @@ function handleMessage(msg) {
                 completed: false,
                 priority: normalizePriority(msg.priority),
                 dueDate: isValidDate(msg.dueDate) ? msg.dueDate : null,
+                tags: normalizeTags(msg.tags),
                 createdAt: new Date().toISOString()
             };
             todos.push(todo);
@@ -174,6 +196,7 @@ function handleMessage(msg) {
             const tags = [];
             if (todo.priority) tags.push('[' + ({high:'高',medium:'中',low:'低'}[todo.priority]) + ']');
             if (todo.dueDate) tags.push('到期 ' + todo.dueDate);
+            if (todo.tags && todo.tags.length) tags.push('#' + todo.tags.join(' #'));
             console.log(`  + 添加：${text}${tags.length ? ' ' + tags.join(' ') : ''}`);
             break;
         }
@@ -188,7 +211,6 @@ function handleMessage(msg) {
                 if (typeof msg.updates.completed === 'boolean') {
                     todo.completed = msg.updates.completed;
                 }
-                // dueDate 字段：传字符串设置，传 null/空字符串清除，其他忽略
                 if ('dueDate' in msg.updates) {
                     const v = msg.updates.dueDate;
                     if (v === null || v === '') {
@@ -197,9 +219,11 @@ function handleMessage(msg) {
                         todo.dueDate = v;
                     }
                 }
-                // priority 字段：传字符串设置，传 null 清除，其他忽略
                 if ('priority' in msg.updates) {
                     todo.priority = normalizePriority(msg.updates.priority);
+                }
+                if ('tags' in msg.updates) {
+                    todo.tags = normalizeTags(msg.updates.tags);
                 }
             }
             saveTodos();
@@ -207,6 +231,7 @@ function handleMessage(msg) {
             const tags = [];
             if (todo.priority) tags.push('[' + ({high:'高',medium:'中',low:'低'}[todo.priority]) + ']');
             if (todo.dueDate) tags.push('到期 ' + todo.dueDate);
+            if (todo.tags && todo.tags.length) tags.push('#' + todo.tags.join(' #'));
             console.log(`  ~ 更新：${todo.text} [${todo.completed ? '✓' : ' '}]${tags.length ? ' ' + tags.join(' ') : ''}`);
             break;
         }
