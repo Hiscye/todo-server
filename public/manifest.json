@@ -1,7 +1,7 @@
 {
   "name": "代办清单 · My Tasks",
   "short_name": "代办清单",
-  "description": "个人待办事项，支持多人在线独立使用",
+  "description": "个人待办事项，支持多人在线独立使用 + 桌面小组件",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#1a1033",
@@ -30,6 +30,12 @@
       "short_name": "添加",
       "description": "快速添加新任务",
       "url": "/?action=add"
+    },
+    {
+      "name": "桌面小组件",
+      "short_name": "小组件",
+      "description": "打开小窗模式（320×480），快速勾选",
+      "url": "/widget.html"
     }
   ]
 }

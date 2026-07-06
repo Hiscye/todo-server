@@ -482,6 +482,7 @@
                     <span class="status-dot"></span>
                     <span id="conn-text">连接中</span>
                 </div>
+                <button class="icon-btn" id="open-widget-btn" title="打开桌面小组件（320×480 小窗）">📌</button>
                 <button class="icon-btn" id="settings-btn" title="设置">⚙</button>
             </div>
         </div>
@@ -885,6 +886,21 @@
 
         document.getElementById('conn-badge').addEventListener('click', () => showModal(false));
         document.getElementById('settings-btn').addEventListener('click', () => showModal(false));
+        document.getElementById('open-widget-btn').addEventListener('click', openWidget);
+
+        function openWidget() {
+            // 计算右下角位置
+            const w = 340, h = 520;
+            const left = screen.width - w - 20;
+            const top = screen.height - h - 60;
+            const features = 'width=' + w + ',height=' + h + ',left=' + left + ',top=' + top + ',resizable=yes,scrollbars=no';
+            const win = window.open('/widget.html', 'todo-widget-' + Date.now(), features);
+            if (!win) {
+                toast('请允许浏览器弹出窗口', 'error', { title: '⚠ 被拦截' });
+            } else {
+                toast('桌面小组件已打开', 'success', { title: '📌 小窗已启动' });
+            }
+        }
         document.getElementById('modal-cancel').addEventListener('click', hideModal);
         document.getElementById('modal-connect').addEventListener('click', () => {
             const newName = userNameInput.value.trim();

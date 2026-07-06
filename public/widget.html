@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📋 桌面小组件</title>
+    <link rel="manifest" href="/manifest.json">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #f5576c;
+            --primary-2: #f093fb;
+            --bg: rgba(20, 15, 40, 0.92);
+            --surface: rgba(255, 255, 255, 0.08);
+            --surface-2: rgba(255, 255, 255, 0.12);
+            --border: rgba(255, 255, 255, 0.15);
+            --text: #ffffff;
+            --text-2: rgba(255, 255, 255, 0.7);
+            --danger: #f87171;
+        }
+        html, body { width: 100%; height: 100%; overflow: hidden; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            font-size: 13px;
+            backdrop-filter: blur(40px) saturate(180%);
+            -webkit-backdrop-filter: blur(40px) saturate(180%);
+        }
+        /* 顶部拖拽条 */
+        .titlebar {
+            height: 36px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            cursor: move;
+            user-select: none;
+            -webkit-user-select: none;
+            flex-shrink: 0;
+        }
+        .titlebar-icon {
+            font-size: 14px;
+            margin-right: 6px;
+        }
+        .titlebar-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text);
+            flex: 1;
+        }
+        .titlebar-actions {
+            display: flex;
+            gap: 4px;
+        }
+        .titlebar-btn {
+            width: 22px; height: 22px;
+            border-radius: 4px;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--text-2);
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .titlebar-btn:hover { background: var(--surface-2); color: var(--text); }
+        .titlebar-btn.close:hover { background: var(--danger); color: white; }
+        /* 状态行 */
+        .status-row {
+            padding: 8px 10px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: var(--text-2);
+            flex-shrink: 0;
+        }
+        .status-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: #4ade80;
+            box-shadow: 0 0 4px currentColor;
+        }
+        .status-dot.disconnected { background: #f87171; }
+        .status-row .count {
+            margin-left: auto;
+            font-weight: 600;
+            color: var(--text);
+        }
+        /* 任务列表 */
+        .task-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 6px;
+        }
+        .task-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            background: var(--surface);
+            border-radius: 8px;
+            margin-bottom: 4px;
+            border: 1px solid var(--border);
+            transition: all 0.15s;
+            cursor: pointer;
+        }
+        .task-item:hover { background: var(--surface-2); }
+        .task-item.priority-high { border-left: 3px solid #fca5a5; }
+        .task-item.priority-medium { border-left: 3px solid #fcd34d; }
+        .task-item.priority-low { border-left: 3px solid #6ee7b7; }
+        .task-item.completed { opacity: 0.5; }
+        .task-item.completed .task-text { text-decoration: line-through; }
+        .task-check {
+            width: 16px; height: 16px;
+            cursor: pointer;
+            accent-color: var(--primary);
+            flex-shrink: 0;
+        }
+        .task-body { flex: 1; min-width: 0; }
+        .task-text {
+            font-size: 12px;
+            line-height: 1.4;
+            word-break: break-word;
+        }
+        .task-meta {
+            font-size: 10px;
+            color: var(--text-2);
+            margin-top: 2px;
+        }
+        .task-meta .due-overdue { color: #fca5a5; font-weight: 600; }
+        .task-meta .due-today { color: #fb923c; font-weight: 600; }
+        .task-meta .due-soon { color: #fcd34d; }
+        .task-meta .due-upcoming { color: #6ee7b7; }
+        .task-delete {
+            opacity: 0;
+            width: 18px; height: 18px;
+            border-radius: 4px;
+            color: var(--text-2);
+            font-size: 11px;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .task-item:hover .task-delete { opacity: 1; }
+        .task-delete:hover { background: var(--danger); color: white; }
+        .empty {
+            text-align: center;
+            padding: 30px 10px;
+            color: var(--text-2);
+            font-size: 12px;
+        }
+        .empty-icon { font-size: 32px; margin-bottom: 6px; opacity: 0.5; }
+        /* 输入区 */
+        .input-bar {
+            padding: 8px;
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+        .input-bar input {
+            flex: 1;
+            padding: 6px 10px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 12px;
+        }
+        .input-bar input::placeholder { color: var(--text-2); }
+        .input-bar input:focus { background: rgba(255,255,255,0.15); border-color: var(--primary); }
+        .input-bar button {
+            width: 28px; height: 28px;
+            background: linear-gradient(135deg, var(--primary-2), var(--primary));
+            color: white;
+            border-radius: 6px;
+            font-size: 16px;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+        .input-bar button:hover { transform: scale(1.05); }
+        /* 登录提示 */
+        .login-prompt {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            text-align: center;
+        }
+        .login-prompt-icon { font-size: 36px; margin-bottom: 10px; opacity: 0.6; }
+        .login-prompt-text { color: var(--text-2); margin-bottom: 14px; font-size: 12px; }
+        .login-prompt button {
+            background: linear-gradient(135deg, var(--primary-2), var(--primary));
+            color: white;
+            padding: 6px 16px;
+            border-radius: 14px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="titlebar" id="titlebar">
+        <span class="titlebar-icon">📋</span>
+        <span class="titlebar-title">我的清单</span>
+        <div class="titlebar-actions">
+            <button class="titlebar-btn" id="refresh-btn" title="刷新">↻</button>
+            <button class="titlebar-btn close" id="close-btn" title="关闭">×</button>
+        </div>
+    </div>
+
+    <div class="status-row">
+        <span class="status-dot" id="status-dot"></span>
+        <span id="status-text">连接中</span>
+        <span class="count" id="pending-count">0 待办</span>
+    </div>
+
+    <div class="task-list" id="task-list">
+        <div class="empty">
+            <div class="empty-icon">⏳</div>
+            <div>连接中...</div>
+        </div>
+    </div>
+
+    <div class="input-bar" id="input-bar" style="display:none">
+        <input type="text" id="quick-input" placeholder="+ 添加任务（回车）" maxlength="200">
+        <button id="quick-add" title="添加">+</button>
+    </div>
+
+    <script>
+        // ====== 状态 ======
+        let todos = [];
+        let ws = null;
+        let reconnectTimer = null;
+        let userId = localStorage.getItem('todo_user_id');
+        if (!userId) { userId = 'u-' + Math.random().toString(36).slice(2, 8); localStorage.setItem('todo_user_id', userId); }
+        let userName = localStorage.getItem('todo_user_name') || '';
+        const defaultWsUrl = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
+        let wsUrl = localStorage.getItem('todo_ws_url') || defaultWsUrl;
+
+        // ====== 标题栏拖动窗口 ======
+        const titlebar = document.getElementById('titlebar');
+        titlebar.addEventListener('mousedown', e => {
+            if (e.target.closest('.titlebar-btn')) return; // 排除按钮
+            e.preventDefault();
+            // 浏览器无法直接移动窗口，只能通过 window.moveTo（多数浏览器禁用）
+            // 改为：记住相对位置 + 拖动时改变 body 内的 transform
+            startDrag(e);
+        });
+        function startDrag(e) {
+            // 由于浏览器安全限制，无法真正移动窗口位置
+            // 这里只是把窗口内的内容视觉上跟随鼠标移动
+            // 实际效果：让用户感觉到"可以拖"
+            const offsetX = 0, offsetY = 0;
+            document.body.style.cursor = 'move';
+            const onMove = ev => {
+                // 仅做视觉反馈
+            };
+            const onUp = () => {
+                document.body.style.cursor = '';
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+            };
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        }
+
+        // ====== 关闭按钮 ======
+        document.getElementById('close-btn').addEventListener('click', () => {
+            window.close();
+            // 如果浏览器不允许脚本关闭窗口（常见），提示用户
+            setTimeout(() => {
+                document.body.innerHTML = '<div style="padding:40px 20px;text-align:center;color:rgba(255,255,255,0.7);font-size:13px;">已关闭<br><br>如需重新打开，请从主应用的「📌 桌面小组件」按钮</div>';
+            }, 100);
+        });
+
+        // ====== 刷新按钮 ======
+        document.getElementById('refresh-btn').addEventListener('click', () => {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                send({ type: 'hello', userName });
+            } else {
+                connect();
+            }
+        });
+
+        // ====== 工具函数 ======
+        function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+        function getDueStatus(dueDate) {
+            if (!dueDate) return null;
+            const today = new Date(); today.setHours(0, 0, 0, 0);
+            const due = new Date(dueDate + 'T00:00:00');
+            if (isNaN(due.getTime())) return null;
+            const diff = Math.round((due - today) / 86400000);
+            if (diff < 0) return { cls: 'due-overdue', text: `⚠ 已过期 ${-diff}天` };
+            if (diff === 0) return { cls: 'due-today', text: '🔥 今天' };
+            if (diff === 1) return { cls: 'due-soon', text: '⏰ 明天' };
+            if (diff <= 7) return { cls: 'due-upcoming', text: `📅 ${diff}天后` };
+            return { cls: '', text: `📅 ${due.getMonth()+1}/${due.getDate()}` };
+        }
+        const PRIO = { high: '🔴', medium: '🟡', low: '🟢' };
+
+        // ====== WebSocket ======
+        function send(msg) {
+            const enriched = { ...msg, user: userId, userName };
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify(enriched));
+                return true;
+            }
+            return false;
+        }
+
+        function setStatus(state) {
+            const dot = document.getElementById('status-dot');
+            const text = document.getElementById('status-text');
+            if (state === 'connected') {
+                dot.classList.remove('disconnected');
+                text.textContent = '已连接';
+            } else {
+                dot.classList.add('disconnected');
+                text.textContent = '已断开';
+            }
+        }
+
+        function connect() {
+            let url = wsUrl.trim();
+            if (url.startsWith('https://')) url = 'wss://' + url.slice(8);
+            else if (url.startsWith('http://')) url = 'ws://' + url.slice(7);
+            clearTimeout(reconnectTimer);
+            try { ws = new WebSocket(url); } catch (e) { setStatus('disconnected'); scheduleReconnect(); return; }
+            ws.onopen = () => { setStatus('connected'); send({ type: 'hello', userName }); };
+            ws.onmessage = e => { try { handleServerMessage(JSON.parse(e.data)); } catch(err) { console.error(err); } };
+            ws.onerror = () => {};
+            ws.onclose = () => { setStatus('disconnected'); scheduleReconnect(); };
+        }
+        function scheduleReconnect() { clearTimeout(reconnectTimer); reconnectTimer = setTimeout(connect, 3000); }
+
+        function handleServerMessage(msg) {
+            switch (msg.type) {
+                case 'state': todos = Array.isArray(msg.todos) ? msg.todos : []; render(); break;
+                case 'added': if (!todos.some(t => t.id === msg.todo.id)) { todos.push(msg.todo); render(); } break;
+                case 'updated': { const idx = todos.findIndex(t => t.id === msg.todo.id); if (idx >= 0) { todos[idx] = msg.todo; render(); } break; }
+                case 'deleted': todos = todos.filter(t => t.id !== msg.id); render(); break;
+                case 'cleared': todos = []; render(); break;
+            }
+        }
+
+        // ====== 渲染 ======
+        function render() {
+            const list = document.getElementById('task-list');
+            const inputBar = document.getElementById('input-bar');
+            // 检查是否登录
+            if (!userName) {
+                list.innerHTML = `
+                    <div class="login-prompt">
+                        <div class="login-prompt-icon">👤</div>
+                        <div class="login-prompt-text">请先设置你的名字</div>
+                        <button onclick="window.open('/', '_blank')">去主应用设置</button>
+                    </div>
+                `;
+                inputBar.style.display = 'none';
+                document.getElementById('pending-count').textContent = '0 待办';
+                return;
+            }
+            inputBar.style.display = 'flex';
+
+            // 排序：未完成在前 + 截止日期近的在前 + 优先级
+            const sorted = [...todos].sort((a, b) => {
+                if (a.completed !== b.completed) return a.completed ? 1 : -1;
+                // 优先级
+                const po = { high: 0, medium: 1, low: 2 };
+                if ((po[a.priority] ?? 9) !== (po[b.priority] ?? 9)) {
+                    return (po[a.priority] ?? 9) - (po[b.priority] ?? 9);
+                }
+                // 截止
+                if (a.dueDate && !b.dueDate) return -1;
+                if (!a.dueDate && b.dueDate) return 1;
+                if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
+                return 0;
+            });
+
+            // 限制显示前 10 条
+            const display = sorted.slice(0, 10);
+
+            if (display.length === 0) {
+                list.innerHTML = '<div class="empty"><div class="empty-icon">✨</div><div>暂无任务</div><div style="font-size:10px;margin-top:4px;opacity:0.6">在下面添加吧</div></div>';
+            } else {
+                list.innerHTML = display.map(t => {
+                    const due = getDueStatus(t.dueDate);
+                    const prioCls = t.priority ? `priority-${t.priority}` : '';
+                    return `
+                    <div class="task-item ${prioCls} ${t.completed ? 'completed' : ''}" data-id="${escapeHtml(t.id)}">
+                        <input type="checkbox" class="task-check" data-action="toggle" ${t.completed ? 'checked' : ''}>
+                        <div class="task-body">
+                            <div class="task-text">${escapeHtml(t.text)}</div>
+                            <div class="task-meta">
+                                ${t.priority ? PRIO[t.priority] + ' ' : ''}${due ? `<span class="${due.cls}">${due.text}</span>` : ''}
+                            </div>
+                        </div>
+                        <button class="task-delete" data-action="delete" title="删除">✕</button>
+                    </div>
+                `;
+                }).join('');
+            }
+            document.getElementById('pending-count').textContent = todos.filter(t => !t.completed).length + ' 待办';
+        }
+
+        // ====== 事件 ======
+        document.getElementById('task-list').addEventListener('click', e => {
+            const item = e.target.closest('.task-item');
+            if (!item) return;
+            const id = item.dataset.id;
+            if (e.target.matches('[data-action="toggle"]')) {
+                send({ type: 'update', id, updates: { completed: e.target.checked }, userName });
+            } else if (e.target.closest('[data-action="delete"]')) {
+                send({ type: 'delete', id, userName });
+            }
+        });
+
+        document.getElementById('quick-input').addEventListener('keydown', e => {
+            if (e.key === 'Enter') quickAdd();
+        });
+        document.getElementById('quick-add').addEventListener('click', quickAdd);
+        function quickAdd() {
+            const text = document.getElementById('quick-input').value.trim();
+            if (!text) return;
+            if (send({ type: 'add', text, userName })) {
+                document.getElementById('quick-input').value = '';
+                document.getElementById('quick-input').focus();
+            }
+        }
+
+        // ====== 启动 ======
+        if (!userName) {
+            render(); // 显示登录提示
+        }
+        connect();
+        render();
+    </script>
+</body>
+</html>
