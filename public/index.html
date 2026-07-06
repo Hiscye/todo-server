@@ -3,1054 +3,1212 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>代办清单</title>
+    <title>代办清单 · v1.3.0</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        /* ========================================
+           🎨 设计系统 (Design System)
+           ======================================== */
+        :root {
+            --c-bg: #f5f5f7;
+            --c-surface: #ffffff;
+            --c-surface-2: #fafafc;
+            --c-border: #e5e7eb;
+            --c-border-strong: #d1d5db;
+            --c-text: #111827;
+            --c-text-2: #4b5563;
+            --c-text-3: #9ca3af;
+            --c-text-inv: #ffffff;
+            --c-primary: #6366f1;
+            --c-primary-hover: #4f46e5;
+            --c-primary-soft: #eef2ff;
+            --c-success: #10b981;
+            --c-warning: #f59e0b;
+            --c-danger: #ef4444;
+            --c-danger-soft: #fee2e2;
+            --c-prio-high: #ef4444;
+            --c-prio-high-bg: #fef2f2;
+            --c-prio-medium: #f59e0b;
+            --c-prio-medium-bg: #fffbeb;
+            --c-prio-low: #10b981;
+            --c-prio-low-bg: #f0fdf4;
+            --c-overdue: #dc2626;
+            --c-today: #ea580c;
+            --c-soon: #ca8a04;
+            --c-upcoming: #16a34a;
+            --c-future: #6b7280;
+            --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px;
+            --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px;
+            --r-sm: 6px; --r-md: 10px; --r-lg: 14px; --r-xl: 20px;
+            --r-full: 9999px;
+            --sh-sm: 0 1px 2px rgba(0,0,0,0.05);
+            --sh-md: 0 4px 12px rgba(0,0,0,0.08);
+            --sh-lg: 0 10px 30px rgba(0,0,0,0.10);
+            --sh-xl: 0 25px 60px rgba(0,0,0,0.15);
+            --ff: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            --t-fast: 0.15s ease;
+            --t-base: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            --t-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { font-size: 14px; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-            background-color: #e8e3dc;
-            background-image: url('https://images.unsplash.com/photo-1481277542470-605612bd2d61?w=1920&q=80&auto=format');
-            background-size: cover;
-            background-position: center;
+            font-family: var(--ff);
+            color: var(--c-text);
+            background: linear-gradient(135deg, #e0e7ff 0%, #fce7f3 50%, #dbeafe 100%);
             background-attachment: fixed;
             min-height: 100vh;
+            padding: var(--sp-6) var(--sp-4);
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+        }
+        button { font-family: inherit; cursor: pointer; border: none; background: none; }
+        input, textarea, select { font-family: inherit; outline: none; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--c-border); border-radius: var(--r-full); }
+        ::-webkit-scrollbar-thumb:hover { background: var(--c-border-strong); }
+
+        .app { max-width: 760px; margin: 0 auto; }
+
+        .header {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            border-radius: var(--r-xl);
+            padding: var(--sp-5) var(--sp-6);
+            margin-bottom: var(--sp-5);
+            box-shadow: var(--sh-md);
             display: flex;
+            align-items: center;
+            gap: var(--sp-4);
+            flex-wrap: wrap;
+        }
+        .logo {
+            font-size: 22px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: var(--sp-2);
+            color: var(--c-text);
+        }
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--c-primary), #8b5cf6);
+            border-radius: var(--r-md);
+            display: flex;
+            align-items: center;
             justify-content: center;
-            align-items: flex-start;
-            padding: 40px 20px;
+            color: white;
+            font-size: 18px;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
         }
-
-        .container {
-            background: #ffffff;
-            border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22);
-            width: 100%;
-            max-width: 520px;
-            padding: 32px;
-            position: relative;
+        .header-spacer { flex: 1; }
+        .header-actions { display: flex; align-items: center; gap: var(--sp-2); }
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--r-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--c-text-2);
+            background: rgba(255, 255, 255, 0.6);
+            border: 1px solid var(--c-border);
+            transition: all var(--t-fast);
+            font-size: 16px;
         }
+        .icon-btn:hover { background: white; color: var(--c-primary); transform: translateY(-1px); box-shadow: var(--sh-sm); }
 
-        /* 连接状态徽章 */
         .connection-badge {
-            position: absolute;
-            top: 14px;
-            right: 14px;
             display: flex;
             align-items: center;
             gap: 6px;
-            padding: 5px 10px;
-            border-radius: 999px;
+            padding: 6px 12px;
+            border-radius: var(--r-full);
             font-size: 12px;
-            background: #f7fafc;
-            border: 1px solid #e2e8f0;
+            background: rgba(255,255,255,0.7);
+            border: 1px solid var(--c-border);
             cursor: pointer;
-            transition: all 0.2s;
-            user-select: none;
+            transition: all var(--t-fast);
         }
-        .connection-badge:hover {
-            background: #edf2f7;
+        .connection-badge:hover { background: white; }
+        .status-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--c-warning);
+            transition: background var(--t-fast);
         }
-        .connection-badge .dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #cbd5e0;
-            transition: background 0.2s;
-        }
-        .connection-badge.connected .dot {
-            background: #48bb78;
-            box-shadow: 0 0 0 3px rgba(72, 187, 120, 0.2);
-        }
-        .connection-badge.connecting .dot {
-            background: #ed8936;
-            animation: pulse 1.2s infinite;
-        }
-        .connection-badge.disconnected .dot {
-            background: #e53e3e;
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.4; }
-        }
+        .connection-badge.connected .status-dot { background: var(--c-success); box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2); }
+        .connection-badge.connecting .status-dot { background: var(--c-warning); animation: pulseDot 1.2s infinite; }
+        .connection-badge.disconnected .status-dot { background: var(--c-danger); }
+        @keyframes pulseDot { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
-        h1 {
-            color: #2d3748;
-            font-size: 28px;
-            margin-bottom: 8px;
-            text-align: center;
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--sp-3);
+            margin-bottom: var(--sp-5);
         }
+        @media (max-width: 600px) { .dashboard { grid-template-columns: repeat(2, 1fr); } }
+        .stat-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            border-radius: var(--r-lg);
+            padding: var(--sp-4);
+            box-shadow: var(--sh-sm);
+            transition: all var(--t-base);
+        }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: var(--sh-md); }
+        .stat-icon { font-size: 18px; margin-bottom: var(--sp-1); }
+        .stat-value { font-size: 24px; font-weight: 700; color: var(--c-text); line-height: 1.2; }
+        .stat-label { font-size: 12px; color: var(--c-text-3); margin-top: 2px; }
+        .stat-card.success .stat-value { color: var(--c-success); }
+        .stat-card.warning .stat-value { color: var(--c-warning); }
+        .stat-card.danger .stat-value { color: var(--c-danger); }
 
-        .subtitle {
-            color: #718096;
-            text-align: center;
-            margin-bottom: 24px;
-            font-size: 14px;
+        .add-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            border-radius: var(--r-xl);
+            padding: var(--sp-4);
+            margin-bottom: var(--sp-4);
+            box-shadow: var(--sh-md);
+            transition: all var(--t-base);
         }
-
-        .input-area {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 24px;
-            flex-wrap: wrap;
+        .add-card:focus-within { box-shadow: var(--sh-lg), 0 0 0 3px var(--c-primary-soft); }
+        .add-row { display: flex; gap: var(--sp-2); align-items: center; }
+        .add-input {
+            flex: 1; border: none; background: transparent;
+            font-size: 15px; color: var(--c-text);
+            padding: var(--sp-2) var(--sp-3);
         }
-
-        #todo-input {
-            flex: 1;
-            min-width: 160px;
-            padding: 12px 16px;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 15px;
-            transition: border-color 0.2s;
-            outline: none;
+        .add-input::placeholder { color: var(--c-text-3); }
+        .add-meta {
+            display: flex; gap: var(--sp-2);
+            margin-top: var(--sp-3); padding-top: var(--sp-3);
+            border-top: 1px dashed var(--c-border);
+            flex-wrap: wrap; align-items: center;
         }
-
-        #todo-input:focus {
-            border-color: #667eea;
-        }
-
-        #todo-input:disabled {
-            background: #f7fafc;
-            cursor: not-allowed;
-        }
-
-        #due-input {
-            padding: 12px 12px;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 14px;
-            font-family: inherit;
-            color: #4a5568;
-            background: white;
-            cursor: pointer;
-            transition: border-color 0.2s;
-            outline: none;
-            min-width: 140px;
-        }
-
-        #due-input:focus {
-            border-color: #667eea;
-        }
-
-        #due-input:disabled {
-            background: #f7fafc;
-            cursor: not-allowed;
-        }
-
-        #due-input.has-value {
-            border-color: #cbd5e0;
-        }
-
-        /* 优先级选择器 */
-        .priority-selector {
-            display: flex;
-            gap: 4px;
-            margin-bottom: 16px;
-            align-items: center;
-        }
-        .priority-selector label {
+        .add-meta-label { font-size: 12px; color: var(--c-text-3); margin-right: var(--sp-1); }
+        .chip-group { display: inline-flex; gap: 4px; }
+        .chip {
+            padding: 4px 10px;
             font-size: 12px;
-            color: #718096;
-            margin-right: 4px;
-        }
-        .priority-btn {
+            border-radius: var(--r-full);
+            background: var(--c-surface-2);
+            color: var(--c-text-2);
+            border: 1px solid var(--c-border);
+            transition: all var(--t-fast);
             display: inline-flex;
             align-items: center;
             gap: 4px;
-            padding: 6px 10px;
-            border: 2px solid transparent;
-            border-radius: 6px;
+        }
+        .chip:hover { background: white; }
+        .chip.active { background: var(--c-primary); color: white; border-color: var(--c-primary); }
+        .chip.prio-high.active { background: var(--c-prio-high); border-color: var(--c-prio-high); }
+        .chip.prio-medium.active { background: var(--c-prio-medium); border-color: var(--c-prio-medium); }
+        .chip.prio-low.active { background: var(--c-prio-low); border-color: var(--c-prio-low); }
+        .chip-dot { width: 6px; height: 6px; border-radius: 50%; }
+        .chip.prio-high .chip-dot { background: var(--c-prio-high); }
+        .chip.prio-medium .chip-dot { background: var(--c-prio-medium); }
+        .chip.prio-low .chip-dot { background: var(--c-prio-low); }
+        .chip.active .chip-dot { background: white; }
+        .chip-date {
+            border: 1px solid var(--c-border);
+            padding: 3px 8px;
+            border-radius: var(--r-sm);
             font-size: 12px;
-            cursor: pointer;
             background: white;
-            transition: all 0.15s;
-            color: #4a5568;
-            font-family: inherit;
+            color: var(--c-text-2);
         }
-        .priority-btn .p-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
+        .add-submit {
+            width: 36px; height: 36px;
+            background: linear-gradient(135deg, var(--c-primary), #8b5cf6);
+            color: white;
+            border-radius: var(--r-md);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+            transition: all var(--t-fast);
         }
-        .priority-btn.p-high .p-dot { background: #f56565; }
-        .priority-btn.p-medium .p-dot { background: #ed8936; }
-        .priority-btn.p-low .p-dot { background: #48bb78; }
-        .priority-btn.p-none .p-dot {
-            background: transparent;
-            border: 1px dashed #cbd5e0;
-        }
-        .priority-btn:hover {
-            background: #f7fafc;
-        }
-        .priority-btn.active {
-            background: #edf2f7;
-            border-color: currentColor;
-            font-weight: 600;
-        }
-        .priority-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        .priority-btn.p-high.active { color: #c53030; }
-        .priority-btn.p-medium.active { color: #c05621; }
-        .priority-btn.p-low.active { color: #276749; }
-        .priority-btn.p-none.active { color: #4a5568; }
+        .add-submit:hover:not(:disabled) { transform: translateY(-1px) scale(1.05); box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4); }
+        .add-submit:disabled { background: var(--c-border); box-shadow: none; cursor: not-allowed; }
 
-        .input-hint {
-            font-size: 11px;
-            color: #a0aec0;
-            margin-top: -16px;
-            margin-bottom: 16px;
+        .toolbar {
+            display: flex; align-items: center; gap: var(--sp-3);
+            margin-bottom: var(--sp-4); flex-wrap: wrap;
+        }
+        .search-box { position: relative; flex: 1; min-width: 200px; }
+        .search-input {
+            width: 100%;
+            padding: var(--sp-2) var(--sp-3) var(--sp-2) 36px;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--c-border);
+            border-radius: var(--r-full);
+            font-size: 13px;
+            color: var(--c-text);
+            transition: all var(--t-fast);
+        }
+        .search-input:focus { background: white; border-color: var(--c-primary); box-shadow: 0 0 0 3px var(--c-primary-soft); }
+        .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--c-text-3); font-size: 14px; pointer-events: none; }
+        .filter-tabs {
+            display: flex; background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--c-border);
+            border-radius: var(--r-full);
+            padding: 3px; gap: 2px;
+        }
+        .filter-tab {
+            padding: 5px 12px; font-size: 12px;
+            color: var(--c-text-2);
+            border-radius: var(--r-full);
+            transition: all var(--t-fast);
+            white-space: nowrap;
+        }
+        .filter-tab:hover { color: var(--c-text); }
+        .filter-tab.active { background: white; color: var(--c-primary); font-weight: 600; box-shadow: var(--sh-sm); }
+
+        .todo-list { list-style: none; display: flex; flex-direction: column; gap: var(--sp-2); }
+        .todo-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            border-radius: var(--r-lg);
+            overflow: hidden;
+            box-shadow: var(--sh-sm);
+            transition: all var(--t-base);
+            animation: cardIn var(--t-slow) ease;
+        }
+        .todo-card:hover { box-shadow: var(--sh-md); transform: translateY(-1px); }
+        .todo-card.expanded { box-shadow: var(--sh-md); }
+        @keyframes cardIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .todo-card.priority-high { border-left: 4px solid var(--c-prio-high); }
+        .todo-card.priority-medium { border-left: 4px solid var(--c-prio-medium); }
+        .todo-card.priority-low { border-left: 4px solid var(--c-prio-low); }
+
+        .todo-main {
+            display: flex; align-items: center; gap: var(--sp-3);
+            padding: var(--sp-4); cursor: pointer;
+        }
+        .todo-checkbox { width: 20px; height: 20px; cursor: pointer; accent-color: var(--c-primary); flex-shrink: 0; }
+        .todo-body { flex: 1; min-width: 0; }
+        .todo-text { font-size: 15px; color: var(--c-text); font-weight: 500; word-break: break-word; }
+        .todo-card.completed .todo-text { text-decoration: line-through; color: var(--c-text-3); }
+        .todo-meta { display: flex; gap: var(--sp-2); margin-top: 6px; flex-wrap: wrap; align-items: center; }
+        .meta-pill {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 2px 8px; font-size: 11px;
+            border-radius: var(--r-full);
+            font-weight: 500;
+        }
+        .meta-pill.prio-high { background: var(--c-prio-high-bg); color: var(--c-prio-high); }
+        .meta-pill.prio-medium { background: var(--c-prio-medium-bg); color: var(--c-prio-medium); }
+        .meta-pill.prio-low { background: var(--c-prio-low-bg); color: var(--c-prio-low); }
+        .meta-pill.due-overdue { background: var(--c-danger-soft); color: var(--c-overdue); font-weight: 600; }
+        .meta-pill.due-today { background: #ffedd5; color: var(--c-today); font-weight: 600; }
+        .meta-pill.due-soon { background: #fef9c3; color: var(--c-soon); }
+        .meta-pill.due-upcoming { background: #dcfce7; color: var(--c-upcoming); }
+        .meta-pill.due-future { color: var(--c-future); background: transparent; }
+        .meta-pill.subtask { background: var(--c-primary-soft); color: var(--c-primary); }
+        .meta-pill.desc { background: var(--c-surface-2); color: var(--c-text-2); }
+        .meta-pill.attach { background: var(--c-surface-2); color: var(--c-text-2); }
+        .meta-author { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--c-text-3); }
+        .meta-author .avatar {
+            width: 16px; height: 16px;
+            border-radius: 50%;
+            display: inline-flex; align-items: center; justify-content: center;
+            color: white; font-size: 9px; font-weight: 700;
+        }
+        .meta-author.completed { color: var(--c-success); font-weight: 500; }
+
+        .todo-actions { display: flex; gap: 2px; flex-shrink: 0; }
+        .todo-action-btn {
+            width: 28px; height: 28px;
+            border-radius: var(--r-sm);
+            color: var(--c-text-3);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px;
+            transition: all var(--t-fast);
+        }
+        .todo-action-btn:hover { background: var(--c-surface-2); color: var(--c-text); }
+        .todo-action-btn.danger:hover { background: var(--c-danger-soft); color: var(--c-danger); }
+        .todo-expand-icon {
+            color: var(--c-text-3); font-size: 12px;
+            transition: transform var(--t-base);
+            display: inline-block;
             padding: 0 4px;
         }
+        .todo-card.expanded .todo-expand-icon { transform: rotate(180deg); }
 
-        #add-btn {
-            padding: 12px 24px;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s, transform 0.1s;
-        }
-
-        #add-btn:hover:not(:disabled) {
-            background: #5568d3;
-        }
-
-        #add-btn:active:not(:disabled) {
-            transform: scale(0.97);
-        }
-
-        #add-btn:disabled {
-            background: #cbd5e0;
-            cursor: not-allowed;
-        }
-
-        .stats {
-            display: flex;
-            justify-content: space-between;
-            padding: 12px 16px;
-            background: #f7fafc;
-            border-radius: 8px;
-            margin-bottom: 16px;
-            font-size: 13px;
-            color: #4a5568;
-        }
-
-        .filters {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 16px;
-        }
-
-        .filter-btn {
-            flex: 1;
-            padding: 8px;
-            background: transparent;
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13px;
-            color: #4a5568;
-            transition: all 0.2s;
-        }
-
-        .filter-btn.active {
-            background: #667eea;
-            color: white;
-            border-color: #667eea;
-        }
-
-        #todo-list {
-            list-style: none;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-
-        #todo-list::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        #todo-list::-webkit-scrollbar-thumb {
-            background: #cbd5e0;
-            border-radius: 3px;
-        }
-
-        .todo-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px 14px;
-            background: #f7fafc;
-            border-radius: 8px;
-            margin-bottom: 8px;
-            transition: all 0.2s;
-            animation: slideIn 0.3s ease;
-            position: relative;
+        .todo-details {
+            max-height: 0;
             overflow: hidden;
+            transition: max-height var(--t-slow);
+            background: var(--c-surface-2);
+            border-top: 1px solid transparent;
         }
+        .todo-card.expanded .todo-details { max-height: 800px; border-top-color: var(--c-border); }
+        .todo-details-inner { padding: var(--sp-4) var(--sp-4) var(--sp-4) 50px; }
+        .detail-section { margin-bottom: var(--sp-4); }
+        .detail-section:last-child { margin-bottom: 0; }
+        .detail-label {
+            font-size: 11px; color: var(--c-text-3);
+            text-transform: uppercase; letter-spacing: 0.5px;
+            font-weight: 600; margin-bottom: 6px;
+        }
+        .detail-textarea {
+            width: 100%; min-height: 70px;
+            padding: var(--sp-3);
+            border: 1px solid var(--c-border);
+            border-radius: var(--r-md);
+            font-size: 13px; resize: vertical;
+            background: white; color: var(--c-text);
+            transition: border-color var(--t-fast);
+        }
+        .detail-textarea:focus { border-color: var(--c-primary); }
 
-        /* 优先级左侧色条 */
-        .todo-item::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 4px;
-            background: transparent;
-            transition: background 0.2s;
+        .subtask-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+        .subtask-item {
+            display: flex; align-items: center; gap: var(--sp-2);
+            padding: 6px 8px; border-radius: var(--r-sm);
+            transition: background var(--t-fast);
         }
-        .todo-item.priority-high::before { background: #f56565; }
-        .todo-item.priority-medium::before { background: #ed8936; }
-        .todo-item.priority-low::before { background: #48bb78; }
+        .subtask-item:hover { background: white; }
+        .subtask-checkbox { width: 16px; height: 16px; cursor: pointer; accent-color: var(--c-primary); flex-shrink: 0; }
+        .subtask-text { flex: 1; font-size: 13px; color: var(--c-text-2); }
+        .subtask-item.done .subtask-text { text-decoration: line-through; color: var(--c-text-3); }
+        .subtask-remove {
+            opacity: 0; color: var(--c-text-3); font-size: 12px;
+            padding: 2px 4px; border-radius: 4px;
+            transition: opacity var(--t-fast);
+        }
+        .subtask-item:hover .subtask-remove { opacity: 1; }
+        .subtask-remove:hover { background: var(--c-danger-soft); color: var(--c-danger); }
+        .subtask-add { display: flex; gap: var(--sp-2); margin-top: 6px; align-items: center; }
+        .subtask-input {
+            flex: 1; padding: 6px 10px;
+            border: 1px solid var(--c-border);
+            border-radius: var(--r-sm);
+            font-size: 12px; background: white;
+        }
+        .subtask-input:focus { border-color: var(--c-primary); }
+        .subtask-add-btn { padding: 6px 10px; background: var(--c-primary); color: white; border-radius: var(--r-sm); font-size: 12px; }
+        .subtask-progress {
+            display: inline-block; padding: 1px 8px;
+            background: var(--c-primary-soft); color: var(--c-primary);
+            border-radius: var(--r-full); font-size: 10px; font-weight: 700;
+        }
+        .subtask-progress.done { background: var(--c-success); color: white; }
 
-        .todo-item.priority-high {
-            background: #fff5f5;
+        .attach-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+        .attach-item {
+            display: flex; align-items: center; gap: var(--sp-2);
+            padding: 4px 8px; border-radius: var(--r-sm);
+            font-size: 12px; color: var(--c-primary);
+            text-decoration: none; background: white;
+            border: 1px solid var(--c-border);
+            transition: all var(--t-fast);
         }
-        .todo-item.priority-medium {
-            background: #fffaf0;
+        .attach-item:hover { background: var(--c-primary-soft); border-color: var(--c-primary); }
+        .attach-icon { flex-shrink: 0; }
+        .attach-remove { margin-left: auto; color: var(--c-text-3); padding: 0 4px; font-size: 11px; }
+        .attach-remove:hover { color: var(--c-danger); }
+        .attach-input-row { display: flex; gap: 4px; margin-top: 4px; }
+        .attach-input {
+            flex: 1; padding: 6px 10px;
+            border: 1px solid var(--c-border);
+            border-radius: var(--r-sm);
+            font-size: 12px; background: white;
         }
-        .todo-item.priority-low {
-            background: #f0fff4;
-        }
-        .todo-item.priority-high:hover { background: #fed7d7; }
-        .todo-item.priority-medium:hover { background: #feebc8; }
-        .todo-item.priority-low:hover { background: #c6f6d5; }
+        .attach-input:focus { border-color: var(--c-primary); }
+        .attach-add-btn { padding: 6px 10px; background: var(--c-primary); color: white; border-radius: var(--r-sm); font-size: 12px; }
 
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-8px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        .online-panel {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            border-radius: var(--r-lg);
+            padding: var(--sp-3) var(--sp-4);
+            margin-bottom: var(--sp-4);
+            box-shadow: var(--sh-sm);
         }
-
-        .todo-item:hover {
-            background: #edf2f7;
+        .online-title {
+            display: flex; align-items: center; gap: 6px;
+            font-size: 12px; color: var(--c-text-2);
+            font-weight: 600; margin-bottom: var(--sp-2);
         }
-
-        .todo-item.completed .todo-text {
-            text-decoration: line-through;
-            color: #a0aec0;
-        }
-
-        .todo-item.completed .todo-due {
-            opacity: 0.5;
-        }
-
-        .todo-item.completed::before {
-            opacity: 0.4;
-        }
-
-        .todo-content {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .todo-checkbox {
-            width: 20px;
-            height: 20px;
-            cursor: pointer;
-            accent-color: #667eea;
-            flex-shrink: 0;
-        }
-
-        .todo-text {
-            display: block;
-            color: #2d3748;
-            font-size: 15px;
-            word-break: break-word;
-        }
-
-        .todo-due {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            margin-top: 4px;
-            padding: 3px 8px;
-            font-size: 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            user-select: none;
-            transition: opacity 0.2s;
-        }
-        .todo-due:hover {
-            opacity: 0.75;
-        }
-        .todo-due .due-icon {
-            font-size: 13px;
-        }
-        .todo-due .due-edit {
-            position: absolute;
-            opacity: 0;
-            pointer-events: none;
-            width: 0;
-            height: 0;
-        }
-
-        /* 状态颜色 */
-        .todo-due.overdue {
-            background: #fed7d7;
-            color: #c53030;
-            font-weight: 600;
-        }
-        .todo-due.today {
-            background: #feebc8;
-            color: #c05621;
-            font-weight: 600;
-            animation: pulseDue 2s infinite;
-        }
-        .todo-due.soon {
-            background: #fefcbf;
-            color: #975a16;
-        }
-        .todo-due.upcoming {
-            background: #c6f6d5;
-            color: #276749;
-        }
-        .todo-due.future {
-            color: #718096;
-            background: transparent;
-            padding-left: 0;
-        }
-        @keyframes pulseDue {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
-
-        .todo-due.no-date {
-            color: #cbd5e0;
-            background: transparent;
-            font-size: 11px;
-        }
-        .todo-due.no-date:hover {
-            color: #667eea;
-        }
-
-        /* 优先级徽章 */
-        .todo-meta {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            margin-top: 4px;
-            flex-wrap: wrap;
-        }
-        .todo-priority {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 2px 8px;
-            font-size: 11px;
-            border-radius: 4px;
-            cursor: pointer;
-            user-select: none;
-            font-weight: 600;
-            transition: opacity 0.15s;
-        }
-        .todo-priority:hover { opacity: 0.75; }
-        .todo-priority .p-dot {
-            width: 8px;
-            height: 8px;
+        .online-pulse {
+            width: 8px; height: 8px; background: var(--c-success);
             border-radius: 50%;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+            animation: pulseGreen 1.6s infinite;
         }
-        .todo-priority.high { background: #fed7d7; color: #c53030; }
-        .todo-priority.high .p-dot { background: #f56565; }
-        .todo-priority.medium { background: #feebc8; color: #c05621; }
-        .todo-priority.medium .p-dot { background: #ed8936; }
-        .todo-priority.low { background: #c6f6d5; color: #276749; }
-        .todo-priority.low .p-dot { background: #48bb78; }
-        .todo-priority.none {
-            color: #cbd5e0;
-            background: transparent;
-            font-weight: normal;
+        @keyframes pulseGreen {
+            0%, 100% { box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2); }
+            50% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.05); }
         }
-        .todo-priority.none:hover { color: #667eea; }
+        .online-list { display: flex; flex-wrap: wrap; gap: 6px; }
+        .online-user {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 4px 10px 4px 4px; background: white;
+            border-radius: var(--r-full);
+            border: 1px solid var(--c-border);
+            font-size: 12px; color: var(--c-text);
+            transition: all var(--t-fast);
+            cursor: help;
+        }
+        .online-user:hover { transform: translateY(-1px); box-shadow: var(--sh-sm); }
+        .online-user .avatar {
+            width: 22px; height: 22px; border-radius: 50%;
+            display: inline-flex; align-items: center; justify-content: center;
+            color: white; font-size: 11px; font-weight: 700;
+        }
+        .online-user .me-tag {
+            background: var(--c-primary); color: white;
+            font-size: 9px; padding: 1px 5px;
+            border-radius: var(--r-full); margin-left: 2px; font-weight: 700;
+        }
+        .online-empty { color: var(--c-text-3); font-size: 12px; padding: 4px 0; }
 
-        .delete-btn {
-            background: transparent;
-            border: none;
-            color: #e53e3e;
-            cursor: pointer;
-            font-size: 18px;
-            padding: 4px 8px;
-            border-radius: 4px;
-            transition: background 0.2s;
-        }
+        .empty-state { text-align: center; padding: var(--sp-10) var(--sp-6); color: var(--c-text-3); }
+        .empty-illustration { font-size: 64px; margin-bottom: var(--sp-3); opacity: 0.6; }
+        .empty-title { font-size: 16px; color: var(--c-text-2); margin-bottom: var(--sp-2); font-weight: 500; }
+        .empty-hint { font-size: 13px; color: var(--c-text-3); }
 
-        .delete-btn:hover {
-            background: #fed7d7;
+        .toast-container {
+            position: fixed; top: 20px; right: 20px;
+            z-index: 9999;
+            display: flex; flex-direction: column;
+            gap: var(--sp-2);
+            pointer-events: none;
         }
-
-        .empty-state {
-            text-align: center;
-            padding: 40px 20px;
-            color: #a0aec0;
-            font-size: 14px;
+        .toast {
+            background: white; border-radius: var(--r-md);
+            padding: var(--sp-3) var(--sp-4);
+            box-shadow: var(--sh-lg);
+            display: flex; align-items: center; gap: var(--sp-3);
+            min-width: 280px; max-width: 400px;
+            pointer-events: auto;
+            border-left: 4px solid var(--c-primary);
+            animation: toastIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-
-        .empty-state::before {
-            content: "📝";
-            display: block;
-            font-size: 48px;
-            margin-bottom: 12px;
+        .toast.success { border-left-color: var(--c-success); }
+        .toast.error { border-left-color: var(--c-danger); }
+        .toast.info { border-left-color: var(--c-primary); }
+        .toast-icon { font-size: 18px; flex-shrink: 0; }
+        .toast.success .toast-icon { color: var(--c-success); }
+        .toast.error .toast-icon { color: var(--c-danger); }
+        .toast-body { flex: 1; }
+        .toast-title { font-size: 13px; font-weight: 600; color: var(--c-text); }
+        .toast-msg { font-size: 12px; color: var(--c-text-2); margin-top: 1px; }
+        .toast-action {
+            font-size: 12px; color: var(--c-primary);
+            font-weight: 600; padding: 2px 8px;
+            border-radius: var(--r-sm);
+            background: var(--c-primary-soft);
         }
+        .toast-close { color: var(--c-text-3); padding: 0 4px; font-size: 16px; }
+        .toast.removing { animation: toastOut 0.3s forwards; }
+        @keyframes toastIn { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes toastOut { to { transform: translateX(120%); opacity: 0; } }
 
-        /* 设置弹窗 */
         .modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.45);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-            padding: 20px;
+            position: fixed; inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(4px);
+            display: none; justify-content: center; align-items: center;
+            z-index: 100; padding: 20px;
         }
-        .modal-overlay.active {
-            display: flex;
-        }
+        .modal-overlay.active { display: flex; animation: fadeIn 0.2s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .modal {
-            background: white;
-            border-radius: 12px;
-            padding: 24px;
-            width: 100%;
-            max-width: 460px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            background: white; border-radius: var(--r-xl);
+            padding: var(--sp-6); width: 100%; max-width: 460px;
+            box-shadow: var(--sh-xl);
+            animation: modalIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .modal h3 {
-            margin-bottom: 12px;
-            color: #2d3748;
-            font-size: 18px;
-        }
-        .modal p {
-            color: #4a5568;
-            font-size: 14px;
-            margin-bottom: 12px;
-            line-height: 1.6;
-        }
-        .modal p code {
-            background: #edf2f7;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 12px;
-            color: #2b6cb0;
-        }
+        @keyframes modalIn { from { transform: scale(0.95) translateY(10px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
+        .modal h3 { font-size: 18px; color: var(--c-text); margin-bottom: var(--sp-2); }
+        .modal p { font-size: 13px; color: var(--c-text-2); margin-bottom: var(--sp-3); line-height: 1.6; }
+        .modal p code { background: var(--c-surface-2); padding: 2px 6px; border-radius: var(--r-sm); font-size: 12px; color: var(--c-primary); }
         .modal input {
-            width: 100%;
-            padding: 10px 14px;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 14px;
-            margin-bottom: 16px;
-            outline: none;
+            width: 100%; padding: var(--sp-3);
+            border: 2px solid var(--c-border);
+            border-radius: var(--r-md);
+            font-size: 14px; margin-bottom: var(--sp-3);
+            transition: border-color var(--t-fast);
         }
-        .modal input:focus {
-            border-color: #667eea;
+        .modal input:focus { border-color: var(--c-primary); }
+        .modal-section { margin-bottom: var(--sp-4); }
+        .modal-section-label { display: block; font-size: 13px; font-weight: 600; color: var(--c-text); margin-bottom: 6px; }
+        .modal-actions { display: flex; gap: var(--sp-2); justify-content: flex-end; }
+        .modal-btn { padding: var(--sp-2) var(--sp-4); border-radius: var(--r-md); font-size: 14px; font-weight: 500; transition: all var(--t-fast); }
+        .modal-btn.primary { background: var(--c-primary); color: white; }
+        .modal-btn.primary:hover { background: var(--c-primary-hover); }
+        .modal-btn.secondary { background: var(--c-surface-2); color: var(--c-text-2); }
+        .modal-btn.secondary:hover { background: var(--c-border); }
+
+        .modal-overlay.required .modal { border: 2px solid var(--c-danger); }
+        .modal-overlay.required .modal h3::after { content: ' *必填'; color: var(--c-danger); font-size: 13px; font-weight: normal; }
+        .modal.required-mode .modal-btn.secondary { display: none; }
+
+        .add-card.locked,
+        .toolbar.locked { opacity: 0.5; pointer-events: none; }
+        .name-required-banner {
+            display: none;
+            background: var(--c-danger-soft);
+            border: 1px solid var(--c-danger);
+            color: var(--c-danger);
+            padding: var(--sp-3) var(--sp-4);
+            border-radius: var(--r-lg);
+            font-size: 13px; margin-bottom: var(--sp-4);
+            text-align: center; box-shadow: var(--sh-sm);
         }
-        .modal-actions {
-            display: flex;
-            gap: 8px;
-            justify-content: flex-end;
-        }
-        .modal-btn {
-            padding: 8px 18px;
-            border-radius: 6px;
-            border: none;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .modal-btn.primary {
-            background: #667eea;
-            color: white;
-        }
-        .modal-btn.primary:hover {
-            background: #5568d3;
-        }
-        .modal-btn.secondary {
-            background: #edf2f7;
-            color: #4a5568;
-        }
-        .modal-btn.secondary:hover {
-            background: #e2e8f0;
-        }
+        .name-required-banner.show { display: flex; align-items: center; justify-content: center; gap: var(--sp-2); }
+        .name-required-banner button { background: var(--c-danger); color: white; padding: 4px 12px; border-radius: var(--r-md); font-size: 12px; font-weight: 600; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="connection-badge connecting" id="conn-badge" title="点击设置服务器地址">
-            <span class="dot"></span>
-            <span class="text" id="conn-text">连接中...</span>
-        </div>
-
-        <h1>📋 代办清单</h1>
-        <p class="subtitle">把要做的事记下来，<span id="online-text">一起搞定它</span></p>
-
-        <div class="input-area">
-            <input
-                type="text"
-                id="todo-input"
-                placeholder="输入新任务，回车添加..."
-                maxlength="200"
-                disabled
-            >
-            <input
-                type="date"
-                id="due-input"
-                disabled
-                aria-label="截止日期"
-            >
-            <button id="add-btn" disabled>添加</button>
-        </div>
-
-        <div class="priority-selector" id="priority-selector">
-            <label>优先级：</label>
-            <button type="button" class="priority-btn p-high" data-priority="high" disabled>
-                <span class="p-dot"></span>高
-            </button>
-            <button type="button" class="priority-btn p-medium" data-priority="medium" disabled>
-                <span class="p-dot"></span>中
-            </button>
-            <button type="button" class="priority-btn p-low" data-priority="low" disabled>
-                <span class="p-dot"></span>低
-            </button>
-            <button type="button" class="priority-btn p-none active" data-priority="none" disabled>
-                <span class="p-dot"></span>无
-            </button>
-        </div>
-
-        <div class="input-hint">💡 日期和优先级都可选，点击任务上的标签可随时修改</div>
-
-        <div class="stats">
-            <span>总计：<strong id="total-count">0</strong></span>
-            <span>已完成：<strong id="done-count">0</strong></span>
-            <span>未完成：<strong id="pending-count">0</strong></span>
-            <span>在线：<strong id="online-count">0</strong></span>
-        </div>
-
-        <div class="filters">
-            <button class="filter-btn active" data-filter="all">全部</button>
-            <button class="filter-btn" data-filter="pending">未完成</button>
-            <button class="filter-btn" data-filter="completed">已完成</button>
-        </div>
-
-        <ul id="todo-list"></ul>
-    </div>
-
-    <!-- 设置弹窗 -->
-    <div class="modal-overlay" id="settings-modal">
-        <div class="modal">
-            <h3>⚙ 同步服务器设置</h3>
-            <p>
-                默认会连接当前页面的同源地址。如果你的服务器部署在其他域名，
-                在下面输入对应的 WebSocket 地址：
-            </p>
-            <p style="font-size: 12px; color: #718096;">
-                💡 格式：<code>ws://域名:端口</code> 或 <code>wss://域名:端口</code><br>
-                留空则使用同源地址：<code id="default-url-hint"></code>
-            </p>
-            <input
-                type="text"
-                id="ws-url-input"
-                placeholder="留空使用同源地址"
-            >
-            <div class="modal-actions">
-                <button class="modal-btn secondary" id="modal-cancel">取消</button>
-                <button class="modal-btn primary" id="modal-connect">连接</button>
+    <div class="app">
+        <div class="header">
+            <div class="logo">
+                <div class="logo-icon">📋</div>
+                <span>代办清单</span>
+            </div>
+            <div class="header-spacer"></div>
+            <div class="header-actions">
+                <div class="connection-badge" id="conn-badge" title="点击设置">
+                    <span class="status-dot"></span>
+                    <span id="conn-text">连接中</span>
+                </div>
+                <button class="icon-btn" id="settings-btn" title="设置">⚙</button>
             </div>
         </div>
+
+        <div class="dashboard" id="dashboard">
+            <div class="stat-card">
+                <div class="stat-icon">📊</div>
+                <div class="stat-value" id="d-total">0</div>
+                <div class="stat-label">总任务</div>
+            </div>
+            <div class="stat-card success">
+                <div class="stat-icon">✅</div>
+                <div class="stat-value" id="d-done">0</div>
+                <div class="stat-label">已完成</div>
+            </div>
+            <div class="stat-card warning">
+                <div class="stat-icon">🔥</div>
+                <div class="stat-value" id="d-today">0</div>
+                <div class="stat-label">今日待办</div>
+            </div>
+            <div class="stat-card danger">
+                <div class="stat-icon">📈</div>
+                <div class="stat-value" id="d-rate">0%</div>
+                <div class="stat-label">完成率</div>
+            </div>
+        </div>
+
+        <div class="name-required-banner" id="name-banner">
+            ⚠️ 请先设置你的名字才能添加任务
+            <button id="banner-set-name">立即设置</button>
+        </div>
+
+        <div class="add-card" id="add-card">
+            <div class="add-row">
+                <input type="text" class="add-input" id="todo-input" placeholder="想做什么？输入任务按回车..." maxlength="200">
+                <button class="add-submit" id="add-btn" title="添加">+</button>
+            </div>
+            <div class="add-meta">
+                <span class="add-meta-label">📅 截止</span>
+                <input type="date" class="chip-date" id="due-input">
+                <span class="add-meta-label" style="margin-left: 8px">🎯 优先级</span>
+                <div class="chip-group" id="priority-group">
+                    <button class="chip prio-high" data-prio="high"><span class="chip-dot"></span>高</button>
+                    <button class="chip prio-medium" data-prio="medium"><span class="chip-dot"></span>中</button>
+                    <button class="chip prio-low" data-prio="low"><span class="chip-dot"></span>低</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="toolbar" id="toolbar">
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" class="search-input" id="search-input" placeholder="搜索任务...">
+            </div>
+            <div class="filter-tabs" id="filter-tabs">
+                <button class="filter-tab active" data-filter="all">全部</button>
+                <button class="filter-tab" data-filter="today">今天</button>
+                <button class="filter-tab" data-filter="week">本周</button>
+                <button class="filter-tab" data-filter="overdue">已过期</button>
+                <button class="filter-tab" data-filter="completed">已完成</button>
+            </div>
+        </div>
+
+        <div class="online-panel">
+            <div class="online-title">
+                <span class="online-pulse"></span>
+                <span>在线 <strong id="online-count">0</strong> 人</span>
+            </div>
+            <div class="online-list" id="online-list">
+                <div class="online-empty">连接中...</div>
+            </div>
+        </div>
+
+        <ul class="todo-list" id="todo-list"></ul>
     </div>
+
+    <div class="modal-overlay" id="settings-modal">
+        <div class="modal">
+            <h3>⚙ 设置</h3>
+            <div class="modal-section">
+                <label class="modal-section-label">👤 你的名字</label>
+                <input type="text" id="user-name-input" placeholder="例如：小明" maxlength="20">
+            </div>
+            <div class="modal-section">
+                <label class="modal-section-label">🌐 服务器地址</label>
+                <p style="font-size: 12px;">默认：<code id="default-url-hint"></code></p>
+                <input type="text" id="ws-url-input" placeholder="留空使用同源">
+            </div>
+            <div class="modal-actions">
+                <button class="modal-btn secondary" id="modal-cancel">取消</button>
+                <button class="modal-btn primary" id="modal-connect">保存</button>
+            </div>
+            <p id="required-hint" style="display:none; color: var(--c-danger); font-size: 12px; margin-top: 8px;">⚠️ 必须填写名字才能使用</p>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toast-container"></div>
 
     <script>
         // ====== 全局状态 ======
         let todos = [];
+        let onlineUsers = [];
         let currentFilter = 'all';
+        let searchQuery = '';
+        let expandedTodos = new Set();
         let ws = null;
-        // 默认使用同源地址（同域名、同端口），用户可在设置中手动覆盖
         const defaultWsUrl = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
         let wsUrl = localStorage.getItem('todo_ws_url') || defaultWsUrl;
-        let onlineCount = 0;
         let reconnectTimer = null;
         let userId = localStorage.getItem('todo_user_id');
-        if (!userId) {
-            userId = 'user-' + Math.random().toString(36).slice(2, 8);
-            localStorage.setItem('todo_user_id', userId);
+        if (!userId) { userId = 'u-' + Math.random().toString(36).slice(2, 8); localStorage.setItem('todo_user_id', userId); }
+        let userName = localStorage.getItem('todo_user_name') || '';
+        let modalIsRequired = false;
+        let selectedPriority = null;
+
+        // ====== 工具函数 ======
+        const AVATAR_COLORS = ['#f56565','#ed8936','#ecc94b','#48bb78','#38b2ac','#4299e1','#667eea','#9f7aea','#ed64a6','#a0aec0'];
+        function hashCode(s) { let h = 0; for (let i = 0; i < s.length; i++) h = (h << 5) - h + s.charCodeAt(i) | 0; return Math.abs(h); }
+        function getUserColor(id) { return !id ? '#a0aec0' : AVATAR_COLORS[hashCode(id) % AVATAR_COLORS.length]; }
+        function getInitial(name, id) { if (name && name.trim()) return name.trim()[0].toUpperCase(); if (id) return id[0].toUpperCase(); return '?'; }
+        function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+        function escapeAttr(s) { return String(s).replace(/"/g, '&quot;'); }
+        function formatRelative(iso) {
+            if (!iso) return '';
+            const diff = Date.now() - new Date(iso).getTime();
+            const m = Math.floor(diff / 60000);
+            if (m < 1) return '刚刚';
+            if (m < 60) return m + ' 分钟前';
+            const h = Math.floor(m / 60);
+            if (h < 24) return h + ' 小时前';
+            const d = Math.floor(h / 24);
+            if (d < 7) return d + ' 天前';
+            return new Date(iso).toLocaleDateString('zh-CN');
         }
-
-        // ====== DOM 引用 ======
-        const input = document.getElementById('todo-input');
-        const addBtn = document.getElementById('add-btn');
-        const dueInput = document.getElementById('due-input');
-        const priorityBtns = document.querySelectorAll('.priority-btn');
-        const list = document.getElementById('todo-list');
-        const totalCount = document.getElementById('total-count');
-        const doneCount = document.getElementById('done-count');
-        const pendingCount = document.getElementById('pending-count');
-        const onlineCountEl = document.getElementById('online-count');
-        const filterBtns = document.querySelectorAll('.filter-btn');
-        const connBadge = document.getElementById('conn-badge');
-        const connText = document.getElementById('conn-text');
-        const onlineText = document.getElementById('online-text');
-        const modal = document.getElementById('settings-modal');
-        const wsUrlInput = document.getElementById('ws-url-input');
-        const modalConnect = document.getElementById('modal-connect');
-        const modalCancel = document.getElementById('modal-cancel');
-
-        // 截止日期状态计算
         function getDueStatus(dueDate) {
             if (!dueDate) return null;
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
+            const today = new Date(); today.setHours(0, 0, 0, 0);
             const due = new Date(dueDate + 'T00:00:00');
             if (isNaN(due.getTime())) return null;
-            const diffDays = Math.round((due - today) / (1000 * 60 * 60 * 24));
-            if (diffDays < 0)  return { cls: 'overdue',  icon: '⚠',  text: `已过期 ${-diffDays} 天` };
-            if (diffDays === 0) return { cls: 'today',    icon: '🔥', text: '今天到期' };
-            if (diffDays === 1) return { cls: 'soon',     icon: '⏰', text: '明天到期' };
-            if (diffDays <= 3)  return { cls: 'soon',     icon: '⏰', text: `${diffDays} 天后到期` };
-            if (diffDays <= 7)  return { cls: 'upcoming', icon: '📅', text: `${diffDays} 天后到期` };
-            const m = due.getMonth() + 1;
-            const d = due.getDate();
-            return { cls: 'future', icon: '📅', text: `${m}月${d}日到期` };
+            const diff = Math.round((due - today) / 86400000);
+            if (diff < 0) return { cls: 'due-overdue', icon: '⚠', text: `已过期 ${-diff} 天` };
+            if (diff === 0) return { cls: 'due-today', icon: '🔥', text: '今天到期' };
+            if (diff === 1) return { cls: 'due-soon', icon: '⏰', text: '明天到期' };
+            if (diff <= 3) return { cls: 'due-soon', icon: '⏰', text: `${diff} 天后` };
+            if (diff <= 7) return { cls: 'due-upcoming', icon: '📅', text: `${diff} 天后` };
+            return { cls: 'due-future', icon: '📅', text: `${due.getMonth()+1}/${due.getDate()}` };
         }
+        const PRIO = { high: { cls: 'prio-high', icon: '🔴', text: '高' }, medium: { cls: 'prio-medium', icon: '🟡', text: '中' }, low: { cls: 'prio-low', icon: '🟢', text: '低' } };
 
-        const PRIORITY_MAP = {
-            high:   { cls: 'high',   icon: '🔴', text: '高' },
-            medium: { cls: 'medium', icon: '🟡', text: '中' },
-            low:    { cls: 'low',    icon: '🟢', text: '低' }
-        };
-        let selectedPriority = null;  // 当前在添加表单中选中的优先级
-
-        function getPriorityBadge(p) {
-            const info = PRIORITY_MAP[p];
-            if (!info) {
-                return `<span class="todo-priority none" data-action="cycle-priority" title="点击设置优先级">＋ 优先级</span>`;
+        // ====== Toast 通知 ======
+        function toast(msg, type = 'info', opts = {}) {
+            const icons = { success: '✓', error: '✕', info: 'ℹ' };
+            const container = document.getElementById('toast-container');
+            const t = document.createElement('div');
+            t.className = 'toast ' + type;
+            t.innerHTML = `
+                <span class="toast-icon">${icons[type] || 'ℹ'}</span>
+                <div class="toast-body">
+                    ${opts.title ? `<div class="toast-title">${escapeHtml(opts.title)}</div>` : ''}
+                    <div class="toast-msg">${escapeHtml(msg)}</div>
+                </div>
+                ${opts.action ? `<button class="toast-action" data-action="${opts.action.id}">${escapeHtml(opts.action.label)}</button>` : ''}
+                <button class="toast-close">×</button>
+            `;
+            container.appendChild(t);
+            const close = () => { t.classList.add('removing'); setTimeout(() => t.remove(), 300); };
+            t.querySelector('.toast-close').addEventListener('click', close);
+            if (opts.action) {
+                t.querySelector('.toast-action').addEventListener('click', () => { opts.action.handler(); close(); });
             }
-            return `<span class="todo-priority ${info.cls}" data-action="cycle-priority" title="点击修改优先级">${info.icon} ${info.text}</span>`;
+            setTimeout(close, opts.duration || 3500);
         }
 
-        // ====== WebSocket 连接 ======
-        function setStatus(status, text) {
-            connBadge.classList.remove('connected', 'connecting', 'disconnected');
-            connBadge.classList.add(status);
-            connText.textContent = text;
-            const online = status === 'connected';
-            input.disabled = !online;
-            addBtn.disabled = !online;
-            dueInput.disabled = !online;
-            priorityBtns.forEach(b => b.disabled = !online);
-            input.placeholder = online
-                ? '输入新任务，回车添加...'
-                : '未连接到服务器，点击右上角徽章设置';
+        // ====== 渲染 ======
+        function renderSubtasks(todo) {
+            const subs = todo.subtasks || [];
+            const done = subs.filter(s => s.completed).length;
+            const total = subs.length;
+            return `
+                <div class="subtask-list">
+                    ${subs.map(s => `
+                        <li class="subtask-item ${s.completed ? 'done' : ''}" data-sub-id="${escapeAttr(s.id)}">
+                            <input type="checkbox" class="subtask-checkbox" ${s.completed ? 'checked' : ''}>
+                            <span class="subtask-text">${escapeHtml(s.text)}</span>
+                            <button class="subtask-remove" title="删除">✕</button>
+                        </li>
+                    `).join('')}
+                </div>
+                <div class="subtask-add">
+                    <input type="text" class="subtask-input" placeholder="+ 添加子任务（回车确认）" data-add-subtask>
+                    ${total > 0 ? `<span class="subtask-progress ${done === total && total > 0 ? 'done' : ''}">${done}/${total}</span>` : ''}
+                </div>
+            `;
         }
 
-        function connect() {
-            // 自动把 https:// 转成 wss://
-            let url = (wsUrl || defaultWsUrl).trim();
-            if (url.startsWith('https://')) url = 'wss://' + url.slice(8);
-            else if (url.startsWith('http://')) url = 'ws://' + url.slice(7);
+        function renderAttachments(todo) {
+            const atts = todo.attachments || [];
+            return `
+                ${atts.length ? `<ul class="attach-list">${atts.map((a, i) => `
+                    <li class="attach-item">
+                        <span class="attach-icon">🔗</span>
+                        <a href="${escapeHtml(a)}" target="_blank" rel="noopener" style="flex:1; color:inherit; text-decoration:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">${escapeHtml(a)}</a>
+                        <button class="attach-remove" data-remove-attach="${i}">✕</button>
+                    </li>
+                `).join('')}</ul>` : ''}
+                <div class="attach-input-row">
+                    <input type="text" class="attach-input" placeholder="+ 添加链接（如 https://...）回车确认" data-add-attach>
+                </div>
+            `;
+        }
 
-            setStatus('connecting', '连接中...');
-            clearTimeout(reconnectTimer);
+        function renderTodoCard(todo) {
+            const isExpanded = expandedTodos.has(todo.id);
+            const due = getDueStatus(todo.dueDate);
+            const prioInfo = PRIO[todo.priority];
+            const subs = todo.subtasks || [];
+            const subsDone = subs.filter(s => s.completed).length;
+            const atts = todo.attachments || [];
+            const desc = todo.description || '';
+            const authorId = todo.completed && todo.completedBy ? todo.completedBy : todo.createdBy;
+            const authorName = todo.completed && todo.completedByName ? todo.completedByName : todo.createdByName;
+            const authorTime = todo.completed && todo.completedAt ? todo.completedAt : todo.createdAt;
+            const authorColor = getUserColor(authorId);
+            const authorInitial = getInitial(authorName, authorId);
 
-            try {
-                ws = new WebSocket(url);
-            } catch (e) {
-                setStatus('disconnected', '连接失败');
-                scheduleReconnect();
-                return;
-            }
+            const meta = [];
+            if (prioInfo) meta.push(`<span class="meta-pill ${prioInfo.cls}">${prioInfo.icon} ${prioInfo.text}</span>`);
+            if (due) meta.push(`<span class="meta-pill ${due.cls}">${due.icon} ${due.text}</span>`);
+            if (subs.length) meta.push(`<span class="meta-pill subtask">☑ ${subsDone}/${subs.length}</span>`);
+            if (desc) meta.push(`<span class="meta-pill desc">📝 有描述</span>`);
+            if (atts.length) meta.push(`<span class="meta-pill attach">🔗 ${atts.length}</span>`);
+            if (authorName) meta.push(`<span class="meta-author ${todo.completed ? 'completed' : ''}" title="${todo.completed ? '完成' : '添加'}于 ${formatRelative(authorTime)}">
+                <span class="avatar" style="background:${authorColor}">${escapeHtml(authorInitial)}</span>
+                ${escapeHtml(authorName)} · ${formatRelative(authorTime)}
+            </span>`);
 
-            ws.onopen = () => {
-                console.log('✓ 已连接到服务器');
-                setStatus('connected', '已连接');
-                // 首次连接时打个招呼，方便服务器日志看到不同用户
-                send({ type: 'hello', user: userId });
-            };
+            return `
+                <li class="todo-card ${todo.completed ? 'completed' : ''} ${todo.priority ? 'priority-' + todo.priority : ''} ${isExpanded ? 'expanded' : ''}" data-id="${escapeAttr(todo.id)}">
+                    <div class="todo-main" data-action="toggle-expand">
+                        <input type="checkbox" class="todo-checkbox" data-action="toggle" ${todo.completed ? 'checked' : ''}>
+                        <div class="todo-body">
+                            <div class="todo-text">${escapeHtml(todo.text)}</div>
+                            <div class="todo-meta">${meta.join('')}</div>
+                        </div>
+                        <div class="todo-actions">
+                            <span class="todo-expand-icon">▾</span>
+                            <button class="todo-action-btn danger" data-action="delete" title="删除">✕</button>
+                        </div>
+                    </div>
+                    <div class="todo-details">
+                        <div class="todo-details-inner">
+                            <div class="detail-section">
+                                <div class="detail-label">📝 描述</div>
+                                <textarea class="detail-textarea" data-field="description" placeholder="点击添加详细描述...">${escapeHtml(desc)}</textarea>
+                            </div>
+                            <div class="detail-section">
+                                <div class="detail-label">☑ 子任务</div>
+                                ${renderSubtasks(todo)}
+                            </div>
+                            <div class="detail-section">
+                                <div class="detail-label">🔗 附件链接</div>
+                                ${renderAttachments(todo)}
+                            </div>
+                        </div>
+                    </div>
+                </li>
+            `;
+        }
 
-            ws.onmessage = (event) => {
-                try {
-                    const msg = JSON.parse(event.data);
-                    handleServerMessage(msg);
-                } catch (e) {
-                    console.error('消息解析失败', e);
+        function render() {
+            const list = document.getElementById('todo-list');
+            const filtered = todos.filter(t => {
+                if (currentFilter === 'completed') return t.completed;
+                if (currentFilter === 'today') {
+                    if (t.completed) return false;
+                    const due = getDueStatus(t.dueDate);
+                    return due && due.cls === 'due-today';
                 }
-            };
+                if (currentFilter === 'week') {
+                    if (t.completed) return false;
+                    const due = getDueStatus(t.dueDate);
+                    return due && ['due-today', 'due-soon', 'due-upcoming'].includes(due.cls);
+                }
+                if (currentFilter === 'overdue') {
+                    if (t.completed) return false;
+                    const due = getDueStatus(t.dueDate);
+                    return due && due.cls === 'due-overdue';
+                }
+                if (searchQuery) {
+                    const q = searchQuery.toLowerCase();
+                    const inText = t.text.toLowerCase().includes(q);
+                    const inDesc = (t.description || '').toLowerCase().includes(q);
+                    const inSubs = (t.subtasks || []).some(s => s.text.toLowerCase().includes(q));
+                    if (!inText && !inDesc && !inSubs) return false;
+                }
+                return true;
+            });
 
-            ws.onerror = (err) => {
-                console.error('WebSocket 错误', err);
-            };
-
-            ws.onclose = () => {
-                console.log('✗ 与服务器断开');
-                setStatus('disconnected', '已断开');
-                onlineCount = 0;
-                onlineCountEl.textContent = '0';
-                scheduleReconnect();
-            };
+            if (filtered.length === 0) {
+                const emptyIcon = searchQuery ? '🔍' : (currentFilter === 'completed' ? '🎉' : '📝');
+                const emptyTitle = searchQuery ? '没找到匹配的任务' : (currentFilter === 'completed' ? '还没有完成的任务' : '还没有任务');
+                const emptyHint = searchQuery ? '试试其他关键词' : '在输入框添加你的第一个任务吧';
+                list.innerHTML = `<div class="empty-state"><div class="empty-illustration">${emptyIcon}</div><div class="empty-title">${emptyTitle}</div><div class="empty-hint">${emptyHint}</div></div>`;
+            } else {
+                list.innerHTML = filtered.map(renderTodoCard).join('');
+            }
+            updateDashboard();
         }
 
-        function scheduleReconnect() {
-            clearTimeout(reconnectTimer);
-            reconnectTimer = setTimeout(() => {
-                console.log('尝试重新连接...');
-                connect();
-            }, 3000);
+        function updateDashboard() {
+            const total = todos.length;
+            const done = todos.filter(t => t.completed).length;
+            const today = todos.filter(t => {
+                if (t.completed) return false;
+                const due = getDueStatus(t.dueDate);
+                return due && due.cls === 'due-today';
+            }).length;
+            const rate = total > 0 ? Math.round(done / total * 100) : 0;
+            document.getElementById('d-total').textContent = total;
+            document.getElementById('d-done').textContent = done;
+            document.getElementById('d-today').textContent = today;
+            document.getElementById('d-rate').textContent = rate + '%';
         }
 
+        // ====== 用户操作 ======
         function send(msg) {
+            const enriched = { ...msg, user: userId, userName: userName };
             if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify(msg));
+                ws.send(JSON.stringify(enriched));
                 return true;
             }
             return false;
         }
 
-        function handleServerMessage(msg) {
-            switch (msg.type) {
-                case 'state':
-                    todos = Array.isArray(msg.todos) ? msg.todos : [];
-                    render();
-                    break;
-                case 'added':
-                    if (!todos.some(t => t.id === msg.todo.id)) {
-                        todos.push(msg.todo);
-                        render();
-                    }
-                    break;
-                case 'updated':
-                    {
-                        const idx = todos.findIndex(t => t.id === msg.todo.id);
-                        if (idx >= 0) {
-                            todos[idx] = msg.todo;
-                            render();
-                        }
-                    }
-                    break;
-                case 'deleted':
-                    todos = todos.filter(t => t.id !== msg.id);
-                    render();
-                    break;
-                case 'cleared':
-                    todos = [];
-                    render();
-                    break;
-                case 'online':
-                    onlineCount = msg.count;
-                    onlineCountEl.textContent = String(msg.count);
-                    onlineText.textContent = msg.count > 1
-                        ? `和 ${msg.count - 1} 个人一起搞定`
-                        : '把要做的事记下来';
-                    break;
-            }
-        }
-
-        // ====== 渲染 ======
-        function updateStats() {
-            const total = todos.length;
-            const done = todos.filter(t => t.completed).length;
-            totalCount.textContent = total;
-            doneCount.textContent = done;
-            pendingCount.textContent = total - done;
-        }
-
-        function render() {
-            const filtered = todos.filter(t => {
-                if (currentFilter === 'pending') return !t.completed;
-                if (currentFilter === 'completed') return t.completed;
-                return true;
-            });
-
-            if (filtered.length === 0) {
-                list.innerHTML = '<div class="empty-state">还没有任务，添加一个吧～</div>';
-            } else {
-                list.innerHTML = filtered.map(todo => {
-                    const due = getDueStatus(todo.dueDate);
-                    const dueHtml = due
-                        ? `<span class="todo-due ${due.cls}" data-action="edit-due" title="点击修改日期">${due.icon} ${escapeHtml(due.text)}</span>`
-                        : `<span class="todo-due no-date" data-action="edit-due" title="点击设置截止日期">📅 添加日期</span>`;
-                    const priorityCls = todo.priority ? `priority-${todo.priority}` : '';
-                    return `
-                    <li class="todo-item ${todo.completed ? 'completed' : ''} ${priorityCls}" data-id="${escapeAttr(todo.id)}">
-                        <input
-                            type="checkbox"
-                            class="todo-checkbox"
-                            ${todo.completed ? 'checked' : ''}
-                        >
-                        <div class="todo-content">
-                            <span class="todo-text">${escapeHtml(todo.text)}</span>
-                            <div class="todo-meta">
-                                ${getPriorityBadge(todo.priority)}
-                                ${dueHtml}
-                            </div>
-                        </div>
-                        <button class="delete-btn" title="删除">✕</button>
-                    </li>
-                `;
-                }).join('');
-            }
-            updateStats();
-        }
-
-        function escapeHtml(str) {
-            const div = document.createElement('div');
-            div.textContent = str;
-            return div.innerHTML;
-        }
-        function escapeAttr(str) {
-            return String(str).replace(/"/g, '&quot;');
-        }
-
-        // ====== 用户操作（通过 WebSocket 发送） ======
         function addTodo() {
-            const text = input.value.trim();
+            const text = document.getElementById('todo-input').value.trim();
             if (!text) return;
-            const dueDate = dueInput.value || null;
-            const priority = selectedPriority;
-            if (send({ type: 'add', text, dueDate, priority, user: userId })) {
-                input.value = '';
-                dueInput.value = '';
-                dueInput.classList.remove('has-value');
-                // 重置优先级选择
+            const dueDate = document.getElementById('due-input').value || null;
+            if (send({ type: 'add', text, dueDate, priority: selectedPriority, userName })) {
+                document.getElementById('todo-input').value = '';
+                document.getElementById('due-input').value = '';
                 selectedPriority = null;
-                priorityBtns.forEach(b => b.classList.toggle('active', b.dataset.priority === 'none'));
+                document.querySelectorAll('.chip[data-prio]').forEach(c => c.classList.remove('active'));
+                toast('任务已添加', 'success', { title: '✓ 添加成功' });
+            } else {
+                toast('未连接到服务器', 'error');
             }
         }
 
-        // 优先级按钮点击（添加表单）
-        priorityBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                if (btn.disabled) return;
-                const p = btn.dataset.priority;
-                selectedPriority = p === 'none' ? null : p;
-                priorityBtns.forEach(b => b.classList.toggle('active', b === btn));
+        // ====== 事件 ======
+        document.getElementById('add-btn').addEventListener('click', addTodo);
+        document.getElementById('todo-input').addEventListener('keydown', e => { if (e.key === 'Enter') addTodo(); });
+        document.getElementById('search-input').addEventListener('input', e => { searchQuery = e.target.value; render(); });
+        document.querySelectorAll('.chip[data-prio]').forEach(c => {
+            c.addEventListener('click', () => {
+                if (c.disabled) return;
+                document.querySelectorAll('.chip[data-prio]').forEach(x => x.classList.remove('active'));
+                c.classList.add('active');
+                selectedPriority = c.dataset.prio;
             });
         });
-
-        list.addEventListener('click', (e) => {
-            const item = e.target.closest('.todo-item');
-            if (!item) return;
-            const id = item.dataset.id;
-
-            if (e.target.classList.contains('todo-checkbox')) {
-                send({ type: 'update', id, updates: { completed: e.target.checked } });
-            } else if (e.target.classList.contains('delete-btn')) {
-                send({ type: 'delete', id });
-            } else if (e.target.closest('[data-action="edit-due"]')) {
-                openDueEditor(id, e.target.closest('[data-action="edit-due"]'));
-            } else if (e.target.closest('[data-action="cycle-priority"]')) {
-                cyclePriority(id);
-            }
-        });
-
-        // 点击优先级徽章 → 循环切换 高 → 中 → 低 → 无
-        function cyclePriority(id) {
-            const todo = todos.find(t => t.id === id);
-            if (!todo) return;
-            const order = [null, 'low', 'medium', 'high'];
-            const idx = order.indexOf(todo.priority || null);
-            const next = order[(idx + 1) % order.length];
-            send({ type: 'update', id, updates: { priority: next } });
-        }
-
-        // 点击日期 → 弹出隐藏的 date 选择器
-        function openDueEditor(id, el) {
-            const todo = todos.find(t => t.id === id);
-            if (!todo) return;
-            // 创建一个临时 date input
-            const existing = el.querySelector('input.due-edit');
-            if (existing) { existing.click(); return; }
-            const tmp = document.createElement('input');
-            tmp.type = 'date';
-            tmp.className = 'due-edit';
-            tmp.value = todo.dueDate || '';
-            tmp.style.cssText = 'position:absolute;opacity:0;pointer-events:none;width:1px;height:1px;';
-            el.style.position = 'relative';
-            el.appendChild(tmp);
-            // 触发原生选择器
-            const cleanup = () => {
-                if (tmp.parentNode) tmp.parentNode.removeChild(tmp);
-            };
-            tmp.addEventListener('change', () => {
-                const newVal = tmp.value || null;
-                cleanup();
-                if (newVal !== (todo.dueDate || null)) {
-                    send({ type: 'update', id, updates: { dueDate: newVal } });
-                }
-            });
-            tmp.addEventListener('blur', () => setTimeout(cleanup, 200));
-            setTimeout(() => tmp.showPicker ? tmp.showPicker() : tmp.click(), 50);
-        }
-
-        addBtn.addEventListener('click', addTodo);
-        input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') addTodo();
-        });
-        dueInput.addEventListener('input', () => {
-            dueInput.classList.toggle('has-value', !!dueInput.value);
-        });
-
-        filterBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                filterBtns.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                currentFilter = btn.dataset.filter;
+        document.querySelectorAll('.filter-tab').forEach(t => {
+            t.addEventListener('click', () => {
+                document.querySelectorAll('.filter-tab').forEach(x => x.classList.remove('active'));
+                t.classList.add('active');
+                currentFilter = t.dataset.filter;
                 render();
             });
         });
 
-        // ====== 设置弹窗 ======
-        function showModal() {
-            wsUrlInput.value = (wsUrl === defaultWsUrl ? '' : wsUrl);
-            const hint = document.getElementById('default-url-hint');
-            if (hint) hint.textContent = defaultWsUrl;
-            modal.classList.add('active');
-            setTimeout(() => wsUrlInput.focus(), 50);
-        }
-        function hideModal() {
-            modal.classList.remove('active');
+        // 任务列表事件
+        document.getElementById('todo-list').addEventListener('click', e => {
+            const card = e.target.closest('.todo-card');
+            if (!card) return;
+            const id = card.dataset.id;
+
+            if (e.target.matches('[data-action="toggle"]')) {
+                e.stopPropagation();
+                send({ type: 'update', id, updates: { completed: e.target.checked }, userName });
+                return;
+            }
+            if (e.target.closest('[data-action="delete"]')) {
+                e.stopPropagation();
+                const todo = todos.find(t => t.id === id);
+                send({ type: 'delete', id, userName });
+                if (todo) {
+                    toast(`已删除「${todo.text.slice(0, 20)}」`, 'info', {
+                        title: '已删除',
+                        action: {
+                            id: 'undo-' + id,
+                            label: '撤销',
+                            handler: () => {
+                                send({
+                                    type: 'add',
+                                    text: todo.text,
+                                    priority: todo.priority,
+                                    dueDate: todo.dueDate,
+                                    description: todo.description || '',
+                                    subtasks: todo.subtasks || [],
+                                    attachments: todo.attachments || [],
+                                    userName
+                                });
+                                toast('已恢复', 'success');
+                            }
+                        },
+                        duration: 6000
+                    });
+                }
+                return;
+            }
+            const removeAttachIdx = e.target.dataset.removeAttach;
+            if (removeAttachIdx !== undefined) {
+                e.stopPropagation();
+                const todo = todos.find(t => t.id === id);
+                if (!todo) return;
+                const newAtts = (todo.attachments || []).filter((_, i) => i !== Number(removeAttachIdx));
+                send({ type: 'update', id, updates: { attachments: newAtts }, userName });
+                return;
+            }
+            if (e.target.closest('[data-action="toggle-expand"]')) {
+                if (expandedTodos.has(id)) expandedTodos.delete(id);
+                else expandedTodos.add(id);
+                card.classList.toggle('expanded');
+                return;
+            }
+            if (e.target.matches('.subtask-checkbox')) {
+                e.stopPropagation();
+                const subItem = e.target.closest('.subtask-item');
+                const subId = subItem.dataset.subId;
+                const todo = todos.find(t => t.id === id);
+                if (!todo) return;
+                const newSubs = (todo.subtasks || []).map(s => s.id === subId ? { ...s, completed: e.target.checked } : s);
+                send({ type: 'update', id, updates: { subtasks: newSubs }, userName });
+                return;
+            }
+            if (e.target.matches('.subtask-remove')) {
+                e.stopPropagation();
+                const subItem = e.target.closest('.subtask-item');
+                const subId = subItem.dataset.subId;
+                const todo = todos.find(t => t.id === id);
+                if (!todo) return;
+                const newSubs = (todo.subtasks || []).filter(s => s.id !== subId);
+                send({ type: 'update', id, updates: { subtasks: newSubs }, userName });
+                return;
+            }
+        });
+
+        document.getElementById('todo-list').addEventListener('keydown', e => {
+            if (e.key === 'Enter' && e.target.matches('[data-add-subtask]')) {
+                e.preventDefault();
+                const text = e.target.value.trim();
+                if (!text) return;
+                const card = e.target.closest('.todo-card');
+                const id = card.dataset.id;
+                const todo = todos.find(t => t.id === id);
+                if (!todo) return;
+                const newSubs = [...(todo.subtasks || []), { id: 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), text, completed: false }];
+                send({ type: 'update', id, updates: { subtasks: newSubs }, userName });
+            }
+            if (e.key === 'Enter' && e.target.matches('[data-add-attach]')) {
+                e.preventDefault();
+                const text = e.target.value.trim();
+                if (!text) return;
+                const card = e.target.closest('.todo-card');
+                const id = card.dataset.id;
+                const todo = todos.find(t => t.id === id);
+                if (!todo) return;
+                const newAtts = [...(todo.attachments || []), text];
+                send({ type: 'update', id, updates: { attachments: newAtts }, userName });
+            }
+        });
+
+        document.getElementById('todo-list').addEventListener('blur', e => {
+            if (e.target.matches('[data-field="description"]')) {
+                const card = e.target.closest('.todo-card');
+                if (!card) return;
+                const id = card.dataset.id;
+                const newDesc = e.target.value;
+                const todo = todos.find(t => t.id === id);
+                if (todo && newDesc !== (todo.description || '')) {
+                    send({ type: 'update', id, updates: { description: newDesc }, userName });
+                }
+            }
+        }, true);
+
+        // ====== WebSocket ======
+        function setStatus(status, text) {
+            const badge = document.getElementById('conn-badge');
+            const txt = document.getElementById('conn-text');
+            badge.className = 'connection-badge ' + status;
+            txt.textContent = text;
+            applyUserState();
         }
 
-        connBadge.addEventListener('click', showModal);
-        modalCancel.addEventListener('click', hideModal);
-        modalConnect.addEventListener('click', () => {
-            const url = wsUrlInput.value.trim();
-            // 留空 = 恢复默认同源地址
-            wsUrl = url || defaultWsUrl;
-            if (url) {
-                localStorage.setItem('todo_ws_url', wsUrl);
+        function applyUserState() {
+            const banner = document.getElementById('name-banner');
+            const addCard = document.getElementById('add-card');
+            const toolbar = document.getElementById('toolbar');
+            const hasName = !!(userName && userName.trim());
+            const online = ws && ws.readyState === WebSocket.OPEN;
+            if (hasName) {
+                banner.classList.remove('show');
+                [addCard, toolbar].forEach(el => el.classList.remove('locked'));
+                document.getElementById('todo-input').disabled = !online;
+                document.getElementById('add-btn').disabled = !online;
+                document.getElementById('due-input').disabled = !online;
+                document.querySelectorAll('.chip[data-prio]').forEach(c => c.disabled = !online);
             } else {
-                localStorage.removeItem('todo_ws_url');
+                banner.classList.add('show');
+                [addCard, toolbar].forEach(el => el.classList.add('locked'));
+                document.getElementById('todo-input').disabled = true;
+                document.getElementById('add-btn').disabled = true;
+                document.getElementById('due-input').disabled = true;
+                document.querySelectorAll('.chip[data-prio]').forEach(c => c.disabled = true);
             }
+        }
+
+        function connect() {
+            let url = wsUrl.trim();
+            if (url.startsWith('https://')) url = 'wss://' + url.slice(8);
+            else if (url.startsWith('http://')) url = 'ws://' + url.slice(7);
+            setStatus('connecting', '连接中...');
+            clearTimeout(reconnectTimer);
+            try { ws = new WebSocket(url); } catch (e) { setStatus('disconnected', '连接失败'); scheduleReconnect(); return; }
+            ws.onopen = () => { setStatus('connected', '已连接'); send({ type: 'hello', userName }); };
+            ws.onmessage = e => { try { handleServerMessage(JSON.parse(e.data)); } catch(err) { console.error(err); } };
+            ws.onerror = e => console.error('WS error', e);
+            ws.onclose = () => { setStatus('disconnected', '已断开'); scheduleReconnect(); };
+        }
+        function scheduleReconnect() { clearTimeout(reconnectTimer); reconnectTimer = setTimeout(connect, 3000); }
+
+        function handleServerMessage(msg) {
+            switch (msg.type) {
+                case 'state': todos = Array.isArray(msg.todos) ? msg.todos : []; render(); break;
+                case 'added': if (!todos.some(t => t.id === msg.todo.id)) { todos.push(msg.todo); render(); } break;
+                case 'updated': {
+                    const idx = todos.findIndex(t => t.id === msg.todo.id);
+                    if (idx >= 0) { todos[idx] = msg.todo; render(); }
+                    break;
+                }
+                case 'deleted': todos = todos.filter(t => t.id !== msg.id); render(); break;
+                case 'cleared': todos = []; render(); break;
+                case 'online': document.getElementById('online-count').textContent = msg.count; break;
+                case 'online-list': renderOnlineList(msg.users || []); break;
+            }
+        }
+
+        function renderOnlineList(users) {
+            onlineUsers = users;
+            const list = document.getElementById('online-list');
+            const count = document.getElementById('online-count');
+            count.textContent = users.length;
+            if (users.length === 0) {
+                list.innerHTML = '<div class="online-empty">只有你在线</div>';
+                return;
+            }
+            list.innerHTML = users.map(u => {
+                const isMe = u.id === userId;
+                const initial = getInitial(u.name, u.id);
+                const color = getUserColor(u.id);
+                const tooltip = `${escapeHtml(u.name)} · IP: ${escapeHtml(u.ip || '?')}${isMe ? '（你）' : ''}`;
+                return `<span class="online-user" title="${tooltip}">
+                    <span class="avatar" style="background:${color}">${escapeHtml(initial)}</span>
+                    ${escapeHtml(u.name)}${isMe ? '<span class="me-tag">我</span>' : ''}
+                </span>`;
+            }).join('');
+        }
+
+        // ====== 设置模态框 ======
+        const modal = document.getElementById('settings-modal');
+        const userNameInput = document.getElementById('user-name-input');
+        const wsUrlInput = document.getElementById('ws-url-input');
+        const requiredHint = document.getElementById('required-hint');
+
+        function showModal(required = false) {
+            modalIsRequired = required;
+            userNameInput.value = userName || '';
+            wsUrlInput.value = (wsUrl === defaultWsUrl ? '' : wsUrl);
+            document.getElementById('default-url-hint').textContent = defaultWsUrl;
+            if (required) {
+                modal.classList.add('required', 'required-mode');
+                requiredHint.style.display = 'block';
+            } else {
+                modal.classList.remove('required', 'required-mode');
+                requiredHint.style.display = 'none';
+            }
+            modal.classList.add('active');
+            setTimeout(() => userNameInput.focus(), 50);
+        }
+        function hideModal() { if (modalIsRequired) return; modal.classList.remove('active'); }
+
+        document.getElementById('conn-badge').addEventListener('click', () => showModal(false));
+        document.getElementById('settings-btn').addEventListener('click', () => showModal(false));
+        document.getElementById('modal-cancel').addEventListener('click', hideModal);
+        document.getElementById('modal-connect').addEventListener('click', () => {
+            const newName = userNameInput.value.trim();
+            if (modalIsRequired && !newName) { userNameInput.focus(); return; }
+            if (newName !== userName) {
+                userName = newName;
+                if (newName) localStorage.setItem('todo_user_name', userName);
+                else localStorage.removeItem('todo_user_name');
+                applyUserState();
+            }
+            const url = wsUrlInput.value.trim();
+            wsUrl = url || defaultWsUrl;
+            if (url) localStorage.setItem('todo_ws_url', wsUrl);
+            else localStorage.removeItem('todo_ws_url');
+            modalIsRequired = false;
             hideModal();
             if (ws) { try { ws.close(); } catch(e){} }
             connect();
         });
-        wsUrlInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') modalConnect.click();
-        });
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) hideModal();
-        });
+        document.getElementById('banner-set-name').addEventListener('click', () => showModal(true));
+        userNameInput.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('modal-connect').click(); });
+        modal.addEventListener('click', e => { if (e.target === modal) hideModal(); });
 
         // ====== 启动 ======
-        // 自动连接同源地址（无需配置）
+        applyUserState();
         connect();
         render();
-        // 每分钟重渲染，让「今天到期」「已过期」状态自动更新
-        setInterval(render, 60 * 1000);
+        setInterval(render, 60000);
+        if (!userName) setTimeout(() => showModal(true), 600);
     </script>
 </body>
 </html>

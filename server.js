@@ -1,8 +1,16 @@
 // ============================================
-// 当前版本：v1.0.0
-// 功能：基础同步 + 截止日期 + 优先级
-// 部署分支：main
+// 当前版本：v1.3.0 - UI/UX 全面升级 + 任务详情 + 子任务
+// 上一个版本：v1.0.2
+// 部署分支：v1.3.0-ui-redesign
 // 部署地址：https://todo-server-production-bee1.up.railway.app
+// 改动说明：
+//   1. CSS 设计系统化（变量、玻璃拟态、阴影层次、动画）
+//   2. 任务详情面板（描述、子任务、附件 URL）
+//   3. Toast 通知组件
+//   4. 仪表盘统计卡片
+//   5. 空状态插画 + 引导
+//   6. 加载骨架屏
+//   7. 微交互动效
 // ============================================
 
 // 代办清单实时同步服务器
@@ -155,6 +163,23 @@ function normalizePriority(p) {
     return VALID_PRIORITIES.includes(p) ? p : null;
 }
 
+function normalizeSubtasks(arr) {
+    if (!Array.isArray(arr)) return [];
+    return arr.slice(0, 50).map(s => {
+        if (typeof s === 'string') {
+            return { id: newId(), text: s.slice(0, 200), completed: false };
+        }
+        if (s && typeof s === 'object') {
+            return {
+                id: String(s.id || newId()).slice(0, 50),
+                text: String(s.text || '').slice(0, 200),
+                completed: !!s.completed
+            };
+        }
+        return null;
+    }).filter(Boolean);
+}
+
 function handleMessage(msg) {
     switch (msg.type) {
         case 'add': {
@@ -166,6 +191,9 @@ function handleMessage(msg) {
                 completed: false,
                 priority: normalizePriority(msg.priority),
                 dueDate: isValidDate(msg.dueDate) ? msg.dueDate : null,
+                description: String(msg.description || '').slice(0, 2000),
+                subtasks: normalizeSubtasks(msg.subtasks),
+                attachments: Array.isArray(msg.attachments) ? msg.attachments.slice(0, 20).map(a => String(a).slice(0, 500)) : [],
                 createdAt: new Date().toISOString()
             };
             todos.push(todo);
@@ -174,6 +202,7 @@ function handleMessage(msg) {
             const tags = [];
             if (todo.priority) tags.push('[' + ({high:'高',medium:'中',low:'低'}[todo.priority]) + ']');
             if (todo.dueDate) tags.push('到期 ' + todo.dueDate);
+            if (todo.subtasks && todo.subtasks.length) tags.push(todo.subtasks.length + '个子任务');
             console.log(`  + 添加：${text}${tags.length ? ' ' + tags.join(' ') : ''}`);
             break;
         }
@@ -188,7 +217,6 @@ function handleMessage(msg) {
                 if (typeof msg.updates.completed === 'boolean') {
                     todo.completed = msg.updates.completed;
                 }
-                // dueDate 字段：传字符串设置，传 null/空字符串清除，其他忽略
                 if ('dueDate' in msg.updates) {
                     const v = msg.updates.dueDate;
                     if (v === null || v === '') {
@@ -197,9 +225,19 @@ function handleMessage(msg) {
                         todo.dueDate = v;
                     }
                 }
-                // priority 字段：传字符串设置，传 null 清除，其他忽略
                 if ('priority' in msg.updates) {
                     todo.priority = normalizePriority(msg.updates.priority);
+                }
+                if ('description' in msg.updates) {
+                    todo.description = String(msg.updates.description || '').slice(0, 2000);
+                }
+                if ('subtasks' in msg.updates) {
+                    todo.subtasks = normalizeSubtasks(msg.updates.subtasks);
+                }
+                if ('attachments' in msg.updates) {
+                    todo.attachments = Array.isArray(msg.updates.attachments)
+                        ? msg.updates.attachments.slice(0, 20).map(a => String(a).slice(0, 500))
+                        : [];
                 }
             }
             saveTodos();
@@ -207,6 +245,7 @@ function handleMessage(msg) {
             const tags = [];
             if (todo.priority) tags.push('[' + ({high:'高',medium:'中',low:'低'}[todo.priority]) + ']');
             if (todo.dueDate) tags.push('到期 ' + todo.dueDate);
+            if (todo.subtasks && todo.subtasks.length) tags.push(todo.subtasks.length + '个子任务');
             console.log(`  ~ 更新：${todo.text} [${todo.completed ? '✓' : ' '}]${tags.length ? ' ' + tags.join(' ') : ''}`);
             break;
         }
