@@ -473,12 +473,16 @@
             font-size: 13px; font-weight: 600;
             box-shadow: 0 4px 20px rgba(245, 87, 108, 0.5);
             z-index: 100;
-            display: none;
+            display: flex; align-items: center; gap: 6px;
             cursor: pointer;
             animation: bounceIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .install-btn.show { display: flex; align-items: center; gap: 6px; }
         .install-btn:hover { transform: scale(1.05); }
+        .install-btn.installed {
+            background: rgba(16, 185, 129, 0.9);
+            cursor: default;
+        }
+        .install-btn.installed:hover { transform: none; }
         @keyframes bounceIn {
             0% { transform: scale(0); opacity: 0; }
             50% { transform: scale(1.1); }
@@ -631,6 +635,18 @@
         const PRIO = { high: { cls: 'prio-high', icon: '🔴' }, medium: { cls: 'prio-medium', icon: '🟡' }, low: { cls: 'prio-low', icon: '🟢' } };
 
         // ====== PWA ======
+        const installBtn = document.getElementById('install-btn');
+        let deferredInstallPrompt = null;
+        let isInstalled = false;
+
+        // 检测是否已安装（standalone 模式 = 已安装为 PWA）
+        if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+            isInstalled = true;
+            installBtn.classList.add('installed');
+            installBtn.innerHTML = '✓ 已安装';
+            installBtn.title = '应用已安装为 PWA';
+        }
+
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/service-worker.js')
@@ -641,17 +657,36 @@
         window.addEventListener('beforeinstallprompt', e => {
             e.preventDefault();
             deferredInstallPrompt = e;
-            document.getElementById('install-btn').classList.add('show');
+            if (!isInstalled) {
+                installBtn.innerHTML = '📥 安装到桌面';
+            }
         });
-        document.getElementById('install-btn').addEventListener('click', async () => {
-            if (!deferredInstallPrompt) return;
+        installBtn.addEventListener('click', async () => {
+            if (isInstalled) {
+                // 已安装，提示用户如何打开小组件
+                window.open('/widget.html', 'todo-widget', 'width=340,height=520,right=20,bottom=20');
+                return;
+            }
+            if (!deferredInstallPrompt) {
+                // 浏览器不支持或还没准备好
+                toast('请用 Chrome 或 Edge 浏览器打开，然后点地址栏右侧的「安装」图标', 'info', { title: '💡 安装提示', duration: 6000 });
+                return;
+            }
             deferredInstallPrompt.prompt();
             const { outcome } = await deferredInstallPrompt.userChoice;
             if (outcome === 'accepted') {
+                isInstalled = true;
+                installBtn.classList.add('installed');
+                installBtn.innerHTML = '✓ 已安装';
                 toast('已安装到桌面！', 'success', { title: '🎉 安装成功' });
             }
             deferredInstallPrompt = null;
-            document.getElementById('install-btn').classList.remove('show');
+        });
+        window.addEventListener('appinstalled', () => {
+            isInstalled = true;
+            installBtn.classList.add('installed');
+            installBtn.innerHTML = '✓ 已安装';
+            toast('已成功安装到桌面！', 'success', { title: '🎉 安装完成' });
         });
 
         // ====== Toast 通知 ======
