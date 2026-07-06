@@ -1,8 +1,13 @@
 // ============================================
-// 当前版本：v1.0.0
-// 功能：基础同步 + 截止日期 + 优先级
-// 部署分支：main
+// 当前版本：v1.5.0 - 个人模式（数据隔离）+ PWA 桌面小组件
+// 上一个版本：v1.0.0（v1.x 系列未部署）
+// 部署分支：v1.5.0-personal-mode
 // 部署地址：https://todo-server-production-bee1.up.railway.app
+// 改动说明：
+//   1. 数据隔离：每用户有独立的 todos 列表（按 userId 过滤）
+//   2. PWA 支持：manifest.json + service-worker.js，可安装到桌面
+//   3. 用户名登录：首次访问输入名字，自动生成 userId
+//   4. 在线用户列表保留（仍可看到其他用户）
 // ============================================
 
 // 代办清单实时同步服务器
@@ -56,8 +61,9 @@ const server = http.createServer((req, res) => {
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.end(JSON.stringify({
             status: 'ok',
-            todos: todos.length,
-            clients: wss ? wss.clients.size : 0,
+            totalTodos: todos.length,
+            users: new Set(todos.map(t => t.ownerId)).size,
+            online: onlineUsers.size,
             uptime: Math.round(process.uptime()) + 's'
         }, null, 2));
         return;
@@ -95,6 +101,11 @@ const server = http.createServer((req, res) => {
 
 const wss = new WebSocket.Server({ server });
 
+// 每个 ws 对应的用户信息（hello 时设置）
+const wsUsers = new WeakMap();
+// 在线用户（userId -> { id, name, ip, since, wsSet }）
+const onlineUsers = new Map();
+
 function broadcast(msg) {
     const data = JSON.stringify(msg);
     wss.clients.forEach(client => {
@@ -104,37 +115,84 @@ function broadcast(msg) {
     });
 }
 
-function broadcastOnline() {
-    broadcast({ type: 'online', count: wss.clients.size });
+function broadcastOnlineList() {
+    const users = Array.from(onlineUsers.values()).map(u => ({
+        id: u.id, name: u.name, ip: u.ip,
+        since: new Date(u.since).toISOString()
+    }));
+    broadcast({ type: 'online-list', users, count: users.length });
+}
+
+function getPublicIp(req) {
+    const xff = req.headers['x-forwarded-for'];
+    if (xff) return xff.split(',')[0].trim();
+    const realIp = req.headers['x-real-ip'];
+    if (realIp) return realIp;
+    const cfIp = req.headers['cf-connecting-ip'];
+    if (cfIp) return cfIp;
+    let ip = req.socket.remoteAddress || 'unknown';
+    if (ip.startsWith('::ffff:')) ip = ip.slice(7);
+    return ip;
 }
 
 wss.on('connection', (ws, req) => {
-    const ip = req.socket.remoteAddress;
-    console.log(`[${new Date().toLocaleTimeString()}] 新连接：${ip}，当前在线 ${wss.clients.size} 人`);
-
-    // 给新连接的客户端发送完整状态
-    ws.send(JSON.stringify({ type: 'state', todos }));
-    // 通知所有人最新在线人数
-    broadcastOnline();
+    const ip = getPublicIp(req);
+    console.log(`[${new Date().toLocaleTimeString()}] 新连接：${ip}`);
 
     ws.on('message', (raw) => {
         let msg;
         try {
             msg = JSON.parse(raw.toString());
         } catch (e) {
-            console.error('无效的消息:', raw.toString().slice(0, 100));
+            console.error('无效消息:', raw.toString().slice(0, 100));
             return;
         }
+
         if (msg.type === 'hello') {
-            console.log(`  · 用户标识：${msg.user || '(未设置)'}`);
+            const userId = String(msg.user || '').slice(0, 50);
+            const userName = String(msg.userName || '').trim().slice(0, 30) || '匿名';
+            if (!userId) return;
+            // 记录这个 ws 对应的用户
+            wsUsers.set(ws, { id: userId, name: userName });
+            // 发送该用户自己的 todos（数据隔离）
+            const myTodos = todos.filter(t => t.ownerId === userId);
+            ws.send(JSON.stringify({ type: 'state', todos: myTodos }));
+            // 注册/更新在线用户
+            if (onlineUsers.has(userId)) {
+                onlineUsers.get(userId).wsSet.add(ws);
+            } else {
+                onlineUsers.set(userId, {
+                    id: userId, name: userName, ip,
+                    since: Date.now(), wsSet: new Set([ws])
+                });
+                console.log(`  ✓ 上线: ${userName} [${ip}]`);
+            }
+            broadcastOnlineList();
             return;
         }
+
+        // 需要先 hello 才能操作
+        const u = wsUsers.get(ws);
+        if (!u) return;
+        msg.user = u.id;
+        msg.userName = u.name;
         handleMessage(msg);
     });
 
     ws.on('close', () => {
-        console.log(`[${new Date().toLocaleTimeString()}] 断开连接，剩余 ${wss.clients.size} 人`);
-        broadcastOnline();
+        const u = wsUsers.get(ws);
+        if (u) {
+            const on = onlineUsers.get(u.id);
+            if (on) {
+                on.wsSet.delete(ws);
+                if (on.wsSet.size === 0) {
+                    onlineUsers.delete(u.id);
+                    console.log(`  ✗ 下线: ${u.name} [${on.ip}]`);
+                }
+            }
+            wsUsers.delete(ws);
+            broadcastOnlineList();
+        }
     });
 
     ws.on('error', (err) => {
@@ -156,12 +214,16 @@ function normalizePriority(p) {
 }
 
 function handleMessage(msg) {
+    const ownerId = msg.user;
+    if (!ownerId) return;
+
     switch (msg.type) {
         case 'add': {
             const text = String(msg.text || '').trim().slice(0, 200);
             if (!text) return;
             const todo = {
                 id: newId(),
+                ownerId,
                 text,
                 completed: false,
                 priority: normalizePriority(msg.priority),
@@ -170,16 +232,18 @@ function handleMessage(msg) {
             };
             todos.push(todo);
             saveTodos();
-            broadcast({ type: 'added', todo });
+            // 只推给该 owner 的其他连接（通过 userId 过滤）
+            broadcastToOwner(ownerId, { type: 'added', todo });
             const tags = [];
             if (todo.priority) tags.push('[' + ({high:'高',medium:'中',low:'低'}[todo.priority]) + ']');
             if (todo.dueDate) tags.push('到期 ' + todo.dueDate);
-            console.log(`  + 添加：${text}${tags.length ? ' ' + tags.join(' ') : ''}`);
+            console.log(`  + [${ownerId}] ${text}${tags.length ? ' ' + tags.join(' ') : ''}`);
             break;
         }
         case 'update': {
             const todo = todos.find(t => t.id === msg.id);
-            if (!todo) return;
+            // 数据隔离：只能更新自己的 todo
+            if (!todo || todo.ownerId !== ownerId) return;
             if (typeof msg.updates === 'object' && msg.updates !== null) {
                 if (typeof msg.updates.text === 'string') {
                     const t = msg.updates.text.trim().slice(0, 200);
@@ -188,7 +252,6 @@ function handleMessage(msg) {
                 if (typeof msg.updates.completed === 'boolean') {
                     todo.completed = msg.updates.completed;
                 }
-                // dueDate 字段：传字符串设置，传 null/空字符串清除，其他忽略
                 if ('dueDate' in msg.updates) {
                     const v = msg.updates.dueDate;
                     if (v === null || v === '') {
@@ -197,38 +260,51 @@ function handleMessage(msg) {
                         todo.dueDate = v;
                     }
                 }
-                // priority 字段：传字符串设置，传 null 清除，其他忽略
                 if ('priority' in msg.updates) {
                     todo.priority = normalizePriority(msg.updates.priority);
                 }
             }
             saveTodos();
-            broadcast({ type: 'updated', todo });
+            broadcastToOwner(ownerId, { type: 'updated', todo });
             const tags = [];
             if (todo.priority) tags.push('[' + ({high:'高',medium:'中',low:'低'}[todo.priority]) + ']');
             if (todo.dueDate) tags.push('到期 ' + todo.dueDate);
-            console.log(`  ~ 更新：${todo.text} [${todo.completed ? '✓' : ' '}]${tags.length ? ' ' + tags.join(' ') : ''}`);
+            console.log(`  ~ [${ownerId}] ${todo.text}${tags.length ? ' ' + tags.join(' ') : ''}`);
             break;
         }
         case 'delete': {
-            const before = todos.length;
-            todos = todos.filter(t => t.id !== msg.id);
-            if (todos.length === before) return;
+            const idx = todos.findIndex(t => t.id === msg.id);
+            if (idx < 0 || todos[idx].ownerId !== ownerId) return;
+            todos.splice(idx, 1);
             saveTodos();
-            broadcast({ type: 'deleted', id: msg.id });
-            console.log(`  - 删除：${msg.id}`);
+            broadcastToOwner(ownerId, { type: 'deleted', id: msg.id });
+            console.log(`  - [${ownerId}] ${msg.id}`);
             break;
         }
         case 'clear': {
-            todos = [];
+            const before = todos.length;
+            todos = todos.filter(t => t.ownerId !== ownerId);
+            if (todos.length === before) return;
             saveTodos();
-            broadcast({ type: 'cleared' });
-            console.log('  × 清空所有');
+            broadcastToOwner(ownerId, { type: 'cleared' });
+            console.log(`  × [${ownerId}] 清空自己的任务`);
             break;
         }
         default:
             console.warn('  ? 未知消息类型：', msg.type);
     }
+}
+
+// 给特定用户的所有连接广播（数据隔离用）
+function broadcastToOwner(ownerId, msg) {
+    const u = onlineUsers.get(ownerId);
+    if (!u) return;
+    const data = JSON.stringify(msg);
+    u.wsSet.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(data);
+        }
+    });
 }
 
 server.listen(PORT, HOST, () => {
