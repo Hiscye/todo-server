@@ -197,7 +197,6 @@
             font-weight: 600;
         }
         .tab-btn.active .tab-count { background: var(--c-primary-soft); color: var(--c-primary); }
-        .tab-btn.locked { opacity: 0.5; cursor: not-allowed; }
 
         /* 新闻页面 */
         .news-toolbar {
@@ -1038,7 +1037,6 @@
             const banner = document.getElementById('name-banner');
             const addCard = document.getElementById('add-card');
             const toolbar = document.getElementById('toolbar');
-            const newsTabBtn = document.querySelector('.tab-btn[data-tab="news"]');
             const hasName = !!(userName && userName.trim());
             const online = ws && ws.readyState === WebSocket.OPEN;
             if (hasName) {
@@ -1048,7 +1046,6 @@
                 document.getElementById('add-btn').disabled = !online;
                 document.getElementById('due-input').disabled = !online;
                 document.querySelectorAll('.chip[data-prio]').forEach(c => c.disabled = !online);
-                if (newsTabBtn) newsTabBtn.classList.remove('locked');
             } else {
                 banner.classList.add('show');
                 [addCard, toolbar].forEach(el => el.classList.add('locked'));
@@ -1056,13 +1053,8 @@
                 document.getElementById('add-btn').disabled = true;
                 document.getElementById('due-input').disabled = true;
                 document.querySelectorAll('.chip[data-prio]').forEach(c => c.disabled = true);
-                if (newsTabBtn) newsTabBtn.classList.add('locked');
-                // 如果当前在资讯 tab 且未登录，切回待办
-                const newsTab = document.getElementById('tab-news');
-                if (newsTab && newsTab.style.display !== 'none') {
-                    switchTab('todo');
-                }
             }
+            // 资讯 Tab 永远显示，由 switchTab 决定内容（登录提示 / 正常新闻）
         }
 
         function connect() {
