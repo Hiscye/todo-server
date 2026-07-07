@@ -1186,7 +1186,8 @@
             const installBtn = document.getElementById('install-btn');
             if (installBtn) installBtn.style.display = (tab === 'news') ? 'none' : '';
             if (tab === 'news') {
-                if (!newsLoaded) loadNews();
+                // 每次切换到资讯都重新加载（避免状态不一致）
+                loadNews();
             }
         }
         // 更新 todo tab 数量
@@ -1198,7 +1199,6 @@
         render = function() { _origRender(); updateTabCount(); };
 
         // ====== 新闻模块 ======
-        let newsLoaded = false;
         let newsSource = 'hn';
         let newsCategory = 'top';
 
@@ -1230,12 +1230,12 @@
             meta.textContent = '加载中...';
             try {
                 const url = `/api/news?source=${encodeURIComponent(newsSource)}&category=${encodeURIComponent(newsCategory)}&t=${Date.now()}`;
-                console.log('请求:', url);
+                console.log('[News] 请求:', url);
                 const res = await fetch(url, { cache: 'no-store' });
-                console.log('响应状态:', res.status);
+                console.log('[News] 响应状态:', res.status);
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 const data = await res.json();
-                console.log('收到数据:', data.count, '条');
+                console.log('[News] 收到数据:', data.count, '条, 来源:', data.source);
                 if (!data.articles || data.articles.length === 0) {
                     list.innerHTML = `
                         <li class="news-empty">
@@ -1268,9 +1268,8 @@
                 }).join('');
                 const sourceName = data.sources?.[data.source]?.name || data.source;
                 meta.innerHTML = `共 <strong>${data.count}</strong> 条 · 来源 ${escapeHtml(sourceName)}${data.cached ? ' · 📦 缓存' : ''}`;
-                newsLoaded = true;
             } catch (e) {
-                console.error('新闻加载失败:', e);
+                console.error('[News] 加载失败:', e);
                 list.innerHTML = `<li class="news-error">❌ 加载失败：${escapeHtml(e.message)}<br><br><button onclick="loadNews()" style="margin-top:8px;padding:6px 14px;background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.3);border-radius:8px;color:white;cursor:pointer">重试</button></li>`;
                 meta.textContent = '';
             } finally {
@@ -1278,9 +1277,9 @@
             }
         }
 
-        document.getElementById('news-source')?.addEventListener('change', () => { newsLoaded = false; loadNews(); });
-        document.getElementById('news-category')?.addEventListener('change', () => { newsLoaded = false; loadNews(); });
-        document.getElementById('news-refresh')?.addEventListener('click', () => { newsLoaded = false; loadNews(); });
+        document.getElementById('news-source')?.addEventListener('change', loadNews);
+        document.getElementById('news-category')?.addEventListener('change', loadNews);
+        document.getElementById('news-refresh')?.addEventListener('click', loadNews);
     </script>
 </body>
 </html>
