@@ -197,6 +197,7 @@
             font-weight: 600;
         }
         .tab-btn.active .tab-count { background: var(--c-primary-soft); color: var(--c-primary); }
+        .tab-btn.locked { opacity: 0.5; cursor: not-allowed; }
 
         /* 新闻页面 */
         .news-toolbar {
@@ -1037,6 +1038,7 @@
             const banner = document.getElementById('name-banner');
             const addCard = document.getElementById('add-card');
             const toolbar = document.getElementById('toolbar');
+            const newsTabBtn = document.querySelector('.tab-btn[data-tab="news"]');
             const hasName = !!(userName && userName.trim());
             const online = ws && ws.readyState === WebSocket.OPEN;
             if (hasName) {
@@ -1046,6 +1048,7 @@
                 document.getElementById('add-btn').disabled = !online;
                 document.getElementById('due-input').disabled = !online;
                 document.querySelectorAll('.chip[data-prio]').forEach(c => c.disabled = !online);
+                if (newsTabBtn) newsTabBtn.classList.remove('locked');
             } else {
                 banner.classList.add('show');
                 [addCard, toolbar].forEach(el => el.classList.add('locked'));
@@ -1053,6 +1056,12 @@
                 document.getElementById('add-btn').disabled = true;
                 document.getElementById('due-input').disabled = true;
                 document.querySelectorAll('.chip[data-prio]').forEach(c => c.disabled = true);
+                if (newsTabBtn) newsTabBtn.classList.add('locked');
+                // 如果当前在资讯 tab 且未登录，切回待办
+                const newsTab = document.getElementById('tab-news');
+                if (newsTab && newsTab.style.display !== 'none') {
+                    switchTab('todo');
+                }
             }
         }
 
@@ -1177,7 +1186,13 @@
             connect();
             render();
             setInterval(render, 60000);
-            if (!userName) setTimeout(() => showModal(true), 600);
+            // 未登录时，资讯 tab 显示登录提示（而不是自动加载）
+            if (!userName) {
+                setTimeout(() => {
+                    showNewsLoginPrompt();
+                    showModal(true);
+                }, 600);
+            }
         } catch (e) {
             console.error('[启动失败]', e);
         }
@@ -1196,8 +1211,31 @@
             const installBtn = document.getElementById('install-btn');
             if (installBtn) installBtn.style.display = (tab === 'news') ? 'none' : '';
             if (tab === 'news') {
-                // 每次切换到资讯都重新加载（避免状态不一致）
-                loadNews();
+                // 未登录时显示登录提示，不加载数据
+                if (!userName) {
+                    showNewsLoginPrompt();
+                } else {
+                    loadNews();
+                }
+            }
+        }
+
+        function showNewsLoginPrompt() {
+            const list = document.getElementById('news-list');
+            const meta = document.getElementById('news-meta');
+            if (meta) meta.innerHTML = '';
+            if (list) {
+                list.innerHTML = `
+                    <li style="text-align:center; padding:50px 20px; color: rgba(255,255,255,0.85);">
+                        <div style="font-size:56px; margin-bottom:14px; opacity:0.7">🔒</div>
+                        <div style="font-size:15px; font-weight:600; margin-bottom:6px; color:white">需要登录才能查看资讯</div>
+                        <div style="font-size:13px; color: rgba(255,255,255,0.7); margin-bottom:18px">请先在「待办」Tab 设置你的名字</div>
+                        <button onclick="document.querySelector('[data-tab=&quot;todo&quot;]').click()"
+                                style="padding:8px 20px; background: linear-gradient(135deg, #f093fb, #f5576c); color:white; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer">
+                            前往设置 →
+                        </button>
+                    </li>
+                `;
             }
         }
         // 更新 todo tab 数量
