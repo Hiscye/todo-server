@@ -227,6 +227,14 @@
         .news-refresh-btn:hover { background: rgba(255,255,255,0.3); }
         .news-refresh-btn.spinning { animation: spin 0.6s linear infinite; }
         @keyframes spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+        .news-source-hint {
+            font-size: 11px;
+            color: rgba(255,255,255,0.6);
+            background: rgba(255,255,255,0.05);
+            padding: 4px 10px;
+            border-radius: var(--r-sm);
+            margin-bottom: var(--sp-2);
+        }
         .news-meta {
             font-size: 12px;
             color: rgba(255,255,255,0.6);
@@ -726,9 +734,13 @@
         <div class="tab-content" id="tab-news" style="display:none">
             <div class="news-toolbar">
                 <select class="news-source-select" id="news-source">
-                    <option value="hn">🟠 Hacker News（推荐）</option>
-                    <option value="newsapi">📰 NewsAPI（需在设置配置 key）</option>
-                    <option value="all">🌐 全部源</option>
+                    <option value="hn">🟠 Hacker News（科技）</option>
+                    <option value="chinanews">📰 中新网（中文新闻）</option>
+                    <option value="people">🏛️ 人民网（中文新闻）</option>
+                    <option value="toutiao">📱 今日头条（中文热搜）</option>
+                    <option value="espn">⚽ ESPN（体育）</option>
+                    <option value="newsapi">🌐 NewsAPI（需 key）</option>
+                    <option value="all">📚 全部源</option>
                 </select>
                 <select class="news-source-select" id="news-category">
                     <option value="top">🔥 热门</option>
@@ -736,6 +748,7 @@
                 </select>
                 <button class="news-refresh-btn" id="news-refresh" title="刷新">↻</button>
             </div>
+            <div class="news-source-hint" id="news-hint"></div>
             <div class="news-meta" id="news-meta">加载中...</div>
             <ul class="news-list" id="news-list"></ul>
         </div>
@@ -1316,9 +1329,52 @@
             }
         }
 
-        document.getElementById('news-source')?.addEventListener('change', loadNews);
+        document.getElementById('news-source')?.addEventListener('change', () => {
+            updateCategoryOptions();
+            loadNews();
+        });
         document.getElementById('news-category')?.addEventListener('change', loadNews);
         document.getElementById('news-refresh')?.addEventListener('click', loadNews);
+
+        // 根据数据源动态显示分类选项
+        function updateCategoryOptions() {
+            const source = document.getElementById('news-source')?.value;
+            const cat = document.getElementById('news-category');
+            const hint = document.getElementById('news-hint');
+            const CATS = {
+                hn: [['top', '🔥 热门'], ['new', '🆕 最新']],
+                chinanews: [['latest', '📰 即时新闻']],
+                people: [['society', '🏛️ 社会新闻']],
+                toutiao: [['trending', '🔥 热搜榜']],
+                espn: [
+                    ['soccer/eng.1', '⚽ 英超'],
+                    ['soccer/esp.1', '⚽ 西甲'],
+                    ['soccer/champions', '⚽ 欧冠'],
+                    ['basketball/nba', '🏀 NBA'],
+                    ['football/nfl', '🏈 NFL'],
+                    ['baseball/mlb', '⚾ MLB']
+                ],
+                newsapi: [
+                    ['general', '📰 综合'], ['sports', '⚽ 体育'], ['technology', '💻 科技'],
+                    ['business', '💼 商业'], ['health', '🏥 健康'], ['science', '🔬 科学'],
+                    ['entertainment', '🎬 娱乐']
+                ],
+                all: [['mixed', '📚 混合']]
+            };
+            const options = CATS[source] || CATS.hn;
+            if (cat) {
+                cat.innerHTML = options.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
+            }
+            const HINTS = {
+                espn: '💡 不同分类对应不同联赛',
+                newsapi: '💡 需要在 Railway 环境变量配置 NEWS_API_KEY',
+                chinanews: '🇨🇳 中国新闻网 · 即时滚动新闻',
+                people: '🇨🇳 人民网 · 社会新闻',
+                toutiao: '🇨🇳 今日头条 · 实时热搜',
+                all: '🌐 混合所有源'
+            };
+            if (hint) hint.textContent = HINTS[source] || '';
+        }
     </script>
 </body>
 </html>

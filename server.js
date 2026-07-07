@@ -88,8 +88,12 @@ const server = http.createServer(async (req, res) => {
             cached: !!cacheGet('hn-' + (source === 'newsapi' ? 'newsapi-' + category + '-cn' : category)),
             articles,
             sources: {
-                hn: { name: 'Hacker News', icon: '🟠', needKey: false, categories: ['top', 'new'] },
-                newsapi: { name: 'NewsAPI', icon: '📰', needKey: true, available: !!NEWS_API_KEY, categories: ['business', 'entertainment', 'general', 'health', 'science', 'sports', 'technology'] }
+                hn: { name: 'Hacker News（科技）', icon: '🟠', needKey: false, categories: ['top', 'new'] },
+                chinanews: { name: '中新网（中文新闻）', icon: '📰', needKey: false, categories: ['latest'] },
+                people: { name: '人民网（中文新闻）', icon: '🏛️', needKey: false, categories: ['society'] },
+                toutiao: { name: '今日头条（中文热搜）', icon: '📱', needKey: false, categories: ['trending'] },
+                espn: { name: 'ESPN（体育）', icon: '⚽', needKey: false, categories: ['soccer/eng.1', 'soccer/esp.1', 'basketball/nba', 'football/nfl', 'baseball/mlb', 'soccer/champions'] },
+                newsapi: { name: 'NewsAPI（需 key）', icon: '🌐', needKey: true, available: !!NEWS_API_KEY, categories: ['business', 'entertainment', 'general', 'health', 'science', 'sports', 'technology'] }
             }
         }, null, 2));
         return;
@@ -418,6 +422,146 @@ async function fetchNewsAPI(category = 'general', country = 'cn') {
     return result;
 }
 
+// 简单 RSS 解析器
+function parseRSS(xml) {
+    const items = [];
+    const re = /<item>([\s\S]*?)<\/item>/g;
+    let m;
+    while ((m = re.exec(xml)) !== null) {
+        const block = m[1];
+        const title = (block.match(/<title>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/) || [])[1] || '';
+        const link = (block.match(/<link>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/link>/) || [])[1] || '';
+        const desc = (block.match(/<description>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/description>/) || [])[1] || '';
+        const pubDate = (block.match(/<pubDate>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/pubDate>/) || [])[1] || '';
+        const author = (block.match(/<author>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/author>/) || [])[1] || '';
+        if (title && link) {
+            // 清理 HTML 标签和空白
+            const cleanDesc = desc.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim().slice(0, 200);
+            const cleanTitle = title.replace(/<!\[CDATA\[/g, '').replace(/\]\]>/g, '').replace(/<[^>]+>/g, '').trim();
+            items.push({
+                title: cleanTitle,
+                link: link.trim(),
+                description: cleanDesc,
+                pubDate: pubDate.trim()
+            });
+        }
+    }
+    return items;
+}
+
+// 中新网（中文新闻）
+async function fetchChinanews() {
+    const cacheKey = 'chinanews';
+    const cached = cacheGet(cacheKey);
+    if (cached) return cached;
+    const res = await fetch('https://www.chinanews.com/rss/scroll-news.xml', {
+        signal: AbortSignal.timeout(10000),
+        headers: { 'User-Agent': 'Mozilla/5.0' }
+    });
+    if (!res.ok) return [];
+    const xml = await res.text();
+    const items = parseRSS(xml);
+    const result = items.slice(0, 30).map((it, i) => ({
+        id: 'chinanews-' + i,
+        title: it.title,
+        url: it.link,
+        source: '中新网',
+        sourceIcon: '📰',
+        author: '',
+        time: it.pubDate ? new Date(it.pubDate).toISOString() : '',
+        summary: it.description
+    }));
+    cacheSet(cacheKey, result);
+    return result;
+}
+
+// 人民网（中文新闻）
+async function fetchPeople() {
+    const cacheKey = 'people';
+    const cached = cacheGet(cacheKey);
+    if (cached) return cached;
+    const res = await fetch('https://www.people.com.cn/rss/society.xml', {
+        signal: AbortSignal.timeout(10000),
+        headers: { 'User-Agent': 'Mozilla/5.0' }
+    });
+    if (!res.ok) return [];
+    const xml = await res.text();
+    const items = parseRSS(xml);
+    const result = items.slice(0, 30).map((it, i) => ({
+        id: 'people-' + i,
+        title: it.title,
+        url: it.link,
+        source: '人民网',
+        sourceIcon: '🏛️',
+        author: '',
+        time: it.pubDate ? new Date(it.pubDate).toISOString() : '',
+        summary: it.description
+    }));
+    cacheSet(cacheKey, result);
+    return result;
+}
+
+// 头条热搜
+async function fetchToutiao() {
+    const cacheKey = 'toutiao';
+    const cached = cacheGet(cacheKey);
+    if (cached) return cached;
+    const res = await fetch('https://www.toutiao.com/hot-event/hot-board/?origin=toutiao_pc', {
+        signal: AbortSignal.timeout(10000),
+        headers: { 'User-Agent': 'Mozilla/5.0' }
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const items = (data.data || []).slice(0, 30);
+    const result = items.map((it, i) => ({
+        id: 'toutiao-' + (it.ClusterId || i),
+        title: it.Title || it.QueryWord || '',
+        url: it.Url ? it.Url.replace(/\\\//g, '/') : `https://www.toutiao.com/trending/${it.ClusterId}/`,
+        source: '今日头条',
+        sourceIcon: '📱',
+        author: '',
+        time: '',
+        summary: it.Label ? `#${it.Label}` : ''
+    })).filter(x => x.title);
+    cacheSet(cacheKey, result);
+    return result;
+}
+
+// ESPN 体育新闻
+async function fetchESPN(sport = 'soccer/eng.1') {
+    const cacheKey = 'espn-' + sport;
+    const cached = cacheGet(cacheKey);
+    if (cached) return cached;
+    const url = `https://site.api.espn.com/apis/site/v2/sports/${sport}/news?limit=30`;
+    const res = await fetch(url, {
+        signal: AbortSignal.timeout(10000),
+        headers: { 'User-Agent': 'Mozilla/5.0' }
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const items = data.articles || [];
+    const SPORT_NAMES = {
+        'soccer/eng.1': '英超',
+        'soccer/esp.1': '西甲',
+        'basketball/nba': 'NBA',
+        'football/nfl': 'NFL',
+        'baseball/mlb': 'MLB',
+        'soccer/champions': '欧冠'
+    };
+    const result = items.map((it, i) => ({
+        id: 'espn-' + sport + '-' + i,
+        title: it.headline || it.title || '',
+        url: it.links?.web?.href || it.href || '#',
+        source: 'ESPN ' + (SPORT_NAMES[sport] || sport),
+        sourceIcon: '⚽',
+        author: it.byline || '',
+        time: it.published ? new Date(it.published).toISOString() : '',
+        summary: it.description || ''
+    })).filter(x => x.title && x.url && x.url !== '#');
+    cacheSet(cacheKey, result);
+    return result;
+}
+
 async function fetchNews(source = 'hn', category = 'top') {
     try {
         if (source === 'hn') return await fetchHackerNews(category);
@@ -425,12 +569,18 @@ async function fetchNews(source = 'hn', category = 'top') {
             const data = await fetchNewsAPI(category, 'cn') || await fetchNewsAPI(category, 'us');
             if (data) return data;
         }
+        if (source === 'chinanews') return await fetchChinanews();
+        if (source === 'people') return await fetchPeople();
+        if (source === 'toutiao') return await fetchToutiao();
+        if (source === 'espn') return await fetchESPN(category);
         if (source === 'all') {
-            const [hn, newsapi] = await Promise.all([
+            const [hn, cn, people, espn] = await Promise.all([
                 fetchHackerNews('top').catch(() => []),
-                fetchNewsAPI('general', 'cn').catch(() => []) || fetchNewsAPI('general', 'us').catch(() => [])
+                fetchChinanews().catch(() => []),
+                fetchPeople().catch(() => []),
+                fetchESPN('soccer/eng.1').catch(() => [])
             ]);
-            return [...(hn || []), ...(newsapi || [])].slice(0, 50);
+            return [...(hn || []), ...(cn || []).slice(0, 10), ...(people || []).slice(0, 10), ...(espn || []).slice(0, 10)].slice(0, 60);
         }
         return await fetchHackerNews('top');
     } catch (e) {
