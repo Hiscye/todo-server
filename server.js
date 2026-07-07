@@ -1,13 +1,14 @@
 // ============================================
-// 当前版本：v1.6.0 - 桌面悬浮小组件（基于 v1.5.0）
-// 上一个版本：v1.5.0-personal-mode
-// 部署分支：v1.6.0-floating-widget
+// 当前版本：v1.7.0 - 实时新闻模块（与待办平级）
+// 上一个版本：v1.6.0-floating-widget
+// 部署分支：v1.7.0-news-tab
 // 部署地址：https://todo-server-production-bee1.up.railway.app
 // 改动说明：
-//   1. 继承 v1.5.0：数据隔离 + PWA 桌面图标
-//   2. 新增 widget.html：极简悬浮小组件（小窗、快速操作）
-//   3. 主应用「打开桌面小组件」按钮（popup 320x480）
-//   4. PWA 清单加 widget 快捷方式
+//   1. 新增「资讯」Tab（与待办平级切换）
+//   2. 后端 /api/news 端点（多源：Hacker News + NewsAPI 可选）
+//   3. 缓存 5 分钟，减少 API 调用
+//   4. Hacker News 内置（无需 key）
+//   5. 用户可在设置里配置 NewsAPI key 解锁更多源
 // ============================================
 
 // 代办清单实时同步服务器
@@ -71,6 +72,26 @@ const server = http.createServer((req, res) => {
     if (req.url === '/todos') {
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.end(JSON.stringify(todos, null, 2));
+        return;
+    }
+    // 📰 新闻 API
+    if (req.url.startsWith('/api/news')) {
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        const url = new URL(req.url, `http://${req.headers.host}`);
+        const source = url.searchParams.get('source') || 'hn';
+        const category = url.searchParams.get('category') || 'top';
+        const articles = await fetchNews(source, category);
+        res.end(JSON.stringify({
+            source,
+            category,
+            count: articles.length,
+            cached: !!cacheGet('hn-' + (source === 'newsapi' ? 'newsapi-' + category + '-cn' : category)),
+            articles,
+            sources: {
+                hn: { name: 'Hacker News', icon: '🟠', needKey: false, categories: ['top', 'new'] },
+                newsapi: { name: 'NewsAPI', icon: '📰', needKey: true, available: !!NEWS_API_KEY, categories: ['business', 'entertainment', 'general', 'health', 'science', 'sports', 'technology'] }
+            }
+        }, null, 2));
         return;
     }
 
@@ -305,6 +326,117 @@ function broadcastToOwner(ownerId, msg) {
             client.send(data);
         }
     });
+}
+
+// ============================================
+// 📰 新闻模块
+// ============================================
+const NEWS_CACHE = new Map(); // key -> { data, expire }
+const NEWS_CACHE_TTL = 5 * 60 * 1000; // 5 分钟
+const NEWS_API_KEY = process.env.NEWS_API_KEY || ''; // 可在 Railway 环境变量配置
+
+function cacheGet(key) {
+    const entry = NEWS_CACHE.get(key);
+    if (!entry) return null;
+    if (Date.now() > entry.expire) {
+        NEWS_CACHE.delete(key);
+        return null;
+    }
+    return entry.data;
+}
+
+function cacheSet(key, data) {
+    NEWS_CACHE.set(key, { data, expire: Date.now() + NEWS_CACHE_TTL });
+}
+
+// Hacker News（无需 key）
+async function fetchHackerNews(category = 'top') {
+    const cacheKey = 'hn-' + category;
+    const cached = cacheGet(cacheKey);
+    if (cached) return cached;
+
+    const listUrl = category === 'top'
+        ? 'https://hacker-news.firebaseio.com/v0/topstories.json'
+        : 'https://hacker-news.firebaseio.com/v0/newstories.json';
+    const listRes = await fetch(listUrl, { signal: AbortSignal.timeout(10000) });
+    if (!listRes.ok) throw new Error('HN list failed');
+    const ids = await listRes.json();
+    const topIds = ids.slice(0, 30);
+
+    const items = await Promise.all(topIds.map(async id => {
+        try {
+            const r = await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`, { signal: AbortSignal.timeout(5000) });
+            if (!r.ok) return null;
+            const it = await r.json();
+            if (!it || !it.title) return null;
+            return {
+                id: String(it.id),
+                title: it.title,
+                url: it.url || `https://news.ycombinator.com/item?id=${it.id}`,
+                source: 'Hacker News',
+                sourceIcon: '🟠',
+                author: it.by || 'anonymous',
+                score: it.score || 0,
+                comments: it.descendants || 0,
+                time: new Date(it.time * 1000).toISOString(),
+                summary: (it.text || '').slice(0, 200)
+            };
+        } catch { return null; }
+    }));
+
+    const result = items.filter(Boolean);
+    cacheSet(cacheKey, result);
+    return result;
+}
+
+// NewsAPI（需 key，可选）
+async function fetchNewsAPI(category = 'general', country = 'cn') {
+    if (!NEWS_API_KEY) return null;
+    const cacheKey = 'newsapi-' + category + '-' + country;
+    const cached = cacheGet(cacheKey);
+    if (cached) return cached;
+
+    const url = `https://newsapi.org/v2/top-headlines?category=${category}&country=${country}&pageSize=30&apiKey=${NEWS_API_KEY}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.status !== 'ok' || !Array.isArray(data.articles)) return null;
+
+    const result = data.articles.map((a, i) => ({
+        id: 'newsapi-' + i,
+        title: a.title || '(无标题)',
+        url: a.url,
+        source: a.source?.name || 'News',
+        sourceIcon: '📰',
+        author: a.author || '',
+        time: a.publishedAt,
+        summary: a.description || '',
+        image: a.urlToImage
+    })).filter(a => a.title && a.url && a.title !== '(无标题)' && a.title !== '[Removed]');
+
+    cacheSet(cacheKey, result);
+    return result;
+}
+
+async function fetchNews(source = 'hn', category = 'top') {
+    try {
+        if (source === 'hn') return await fetchHackerNews(category);
+        if (source === 'newsapi') {
+            const data = await fetchNewsAPI(category, 'cn') || await fetchNewsAPI(category, 'us');
+            if (data) return data;
+        }
+        if (source === 'all') {
+            const [hn, newsapi] = await Promise.all([
+                fetchHackerNews('top').catch(() => []),
+                fetchNewsAPI('general', 'cn').catch(() => []) || fetchNewsAPI('general', 'us').catch(() => [])
+            ]);
+            return [...(hn || []), ...(newsapi || [])].slice(0, 50);
+        }
+        return await fetchHackerNews('top');
+    } catch (e) {
+        console.error('  ✗ 抓取新闻失败:', e.message);
+        return [];
+    }
 }
 
 server.listen(PORT, HOST, () => {

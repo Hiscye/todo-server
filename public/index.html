@@ -155,6 +155,149 @@
             font-size: 16px;
         }
         .icon-btn:hover { background: rgba(255,255,255,0.3); }
+
+        /* Tab 导航 */
+        .tab-nav {
+            display: flex;
+            gap: 6px;
+            margin-bottom: var(--sp-4);
+            padding: 4px;
+            background: rgba(255,255,255,0.12);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: var(--r-full);
+        }
+        .tab-btn {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px 14px;
+            background: transparent;
+            color: rgba(255,255,255,0.7);
+            border-radius: var(--r-full);
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .tab-btn:hover { color: white; background: rgba(255,255,255,0.1); }
+        .tab-btn.active {
+            background: white;
+            color: var(--c-primary);
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        .tab-count {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            font-size: 11px;
+            padding: 1px 7px;
+            border-radius: var(--r-full);
+            font-weight: 600;
+        }
+        .tab-btn.active .tab-count { background: var(--c-primary-soft); color: var(--c-primary); }
+
+        /* 新闻页面 */
+        .news-toolbar {
+            display: flex; gap: 6px;
+            margin-bottom: var(--sp-3);
+        }
+        .news-source-select {
+            flex: 1;
+            padding: 8px 12px;
+            background: rgba(255,255,255,0.18);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: var(--r-md);
+            color: white;
+            font-size: 13px;
+            cursor: pointer;
+            color-scheme: dark;
+        }
+        .news-source-select option { background: #1a1033; color: white; }
+        .news-refresh-btn {
+            width: 36px;
+            background: rgba(255,255,255,0.18);
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: var(--r-md);
+            color: white;
+            font-size: 16px;
+        }
+        .news-refresh-btn:hover { background: rgba(255,255,255,0.3); }
+        .news-refresh-btn.spinning { animation: spin 0.6s linear infinite; }
+        @keyframes spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+        .news-meta {
+            font-size: 12px;
+            color: rgba(255,255,255,0.6);
+            margin-bottom: var(--sp-3);
+            padding: 0 4px;
+        }
+        .news-list { list-style: none; display: flex; flex-direction: column; gap: var(--sp-2); }
+        .news-item {
+            display: flex;
+            gap: var(--sp-3);
+            padding: var(--sp-3);
+            background: rgba(255,255,255,0.18);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.25);
+            border-radius: var(--r-lg);
+            color: white;
+            text-decoration: none;
+            transition: all 0.2s;
+            animation: cardIn 0.3s ease;
+        }
+        .news-item:hover {
+            background: rgba(255,255,255,0.28);
+            transform: translateX(2px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+        }
+        .news-item-rank {
+            font-size: 20px;
+            font-weight: 700;
+            color: rgba(255,255,255,0.5);
+            min-width: 28px;
+            text-align: center;
+        }
+        .news-item-rank.top1 { color: #f87171; }
+        .news-item-rank.top2 { color: #fb923c; }
+        .news-item-rank.top3 { color: #fbbf24; }
+        .news-item-body { flex: 1; min-width: 0; }
+        .news-item-title {
+            font-size: 14px;
+            font-weight: 600;
+            line-height: 1.4;
+            margin-bottom: 4px;
+        }
+        .news-item-meta {
+            font-size: 11px;
+            color: rgba(255,255,255,0.7);
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .news-item-source {
+            display: inline-flex; align-items: center; gap: 3px;
+            padding: 1px 6px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 4px;
+        }
+        .news-empty, .news-error {
+            text-align: center;
+            padding: 40px 20px;
+            color: rgba(255,255,255,0.6);
+        }
+        .news-error { color: #fca5a5; }
+        .news-config-hint {
+            background: rgba(251, 191, 36, 0.15);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            color: #fde68a;
+            padding: 10px 14px;
+            border-radius: var(--r-md);
+            font-size: 12px;
+            margin-bottom: var(--sp-3);
+        }
         .widget-launch-btn {
             display: flex; align-items: center; gap: 4px;
             padding: 6px 12px;
@@ -514,7 +657,21 @@
             </div>
         </div>
 
-        <div class="dashboard">
+        <div class="tab-nav">
+            <button class="tab-btn active" data-tab="todo">
+                <span class="tab-icon">📋</span>
+                <span>待办</span>
+                <span class="tab-count" id="tab-todo-count">0</span>
+            </button>
+            <button class="tab-btn" data-tab="news">
+                <span class="tab-icon">📰</span>
+                <span>资讯</span>
+                <span class="tab-count" id="tab-news-count">0</span>
+            </button>
+        </div>
+
+        <div class="tab-content" id="tab-todo">
+            <div class="dashboard">
             <div class="stat-card"><div class="stat-icon">📊</div><div class="stat-value" id="d-total">0</div><div class="stat-label">总任务</div></div>
             <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-value" id="d-done">0</div><div class="stat-label">已完成</div></div>
             <div class="stat-card"><div class="stat-icon">🔥</div><div class="stat-value" id="d-today">0</div><div class="stat-label">今日待办</div></div>
@@ -564,6 +721,24 @@
         </div>
 
         <ul class="todo-list" id="todo-list"></ul>
+        </div><!-- end tab-todo -->
+
+        <div class="tab-content" id="tab-news" style="display:none">
+            <div class="news-toolbar">
+                <select class="news-source-select" id="news-source">
+                    <option value="hn">🟠 Hacker News（推荐）</option>
+                    <option value="newsapi">📰 NewsAPI（需在设置配置 key）</option>
+                    <option value="all">🌐 全部源</option>
+                </select>
+                <select class="news-source-select" id="news-category">
+                    <option value="top">🔥 热门</option>
+                    <option value="new">🆕 最新</option>
+                </select>
+                <button class="news-refresh-btn" id="news-refresh" title="刷新">↻</button>
+            </div>
+            <div class="news-meta" id="news-meta">加载中...</div>
+            <ul class="news-list" id="news-list"></ul>
+        </div>
     </div>
 
     <button class="install-btn" id="install-btn">📥 安装到桌面</button>
@@ -996,6 +1171,98 @@
         render();
         setInterval(render, 60000);
         if (!userName) setTimeout(() => showModal(true), 600);
+
+        // ====== Tab 切换 ======
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+        });
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+            document.getElementById('tab-todo').style.display = tab === 'todo' ? '' : 'none';
+            document.getElementById('tab-news').style.display = tab === 'news' ? '' : 'none';
+            if (tab === 'news' && !newsLoaded) loadNews();
+        }
+        // 更新 todo tab 数量
+        function updateTabCount() {
+            document.getElementById('tab-todo-count').textContent = todos.filter(t => !t.completed).length;
+        }
+        const _origRender = render;
+        render = function() { _origRender(); updateTabCount(); };
+
+        // ====== 新闻模块 ======
+        let newsLoaded = false;
+        let newsSource = 'hn';
+        let newsCategory = 'top';
+
+        function timeAgo(iso) {
+            if (!iso) return '';
+            const diff = Date.now() - new Date(iso).getTime();
+            const m = Math.floor(diff / 60000);
+            if (m < 1) return '刚刚';
+            if (m < 60) return m + '分钟前';
+            const h = Math.floor(m / 60);
+            if (h < 24) return h + '小时前';
+            const d = Math.floor(h / 24);
+            if (d < 7) return d + '天前';
+            return new Date(iso).toLocaleDateString('zh-CN');
+        }
+
+        async function loadNews() {
+            const list = document.getElementById('news-list');
+            const meta = document.getElementById('news-meta');
+            const refreshBtn = document.getElementById('news-refresh');
+            newsSource = document.getElementById('news-source').value;
+            newsCategory = document.getElementById('news-category').value;
+            refreshBtn.classList.add('spinning');
+            list.innerHTML = '<li class="news-empty"><div style="font-size:32px;margin-bottom:8px;opacity:0.5">⏳</div>加载中...</li>';
+            meta.textContent = '加载中...';
+            try {
+                const res = await fetch(`/api/news?source=${newsSource}&category=${newsCategory}`);
+                const data = await res.json();
+                if (data.articles.length === 0) {
+                    list.innerHTML = `
+                        <li class="news-empty">
+                            <div style="font-size:32px;margin-bottom:8px;opacity:0.5">📭</div>
+                            <div>暂无新闻</div>
+                            ${newsSource === 'newsapi' ? '<div class="news-config-hint" style="margin-top:12px">💡 NewsAPI 需要在「⚙ 设置」中配置 API Key<br>或换一个数据源试试</div>' : ''}
+                        </li>`;
+                    meta.textContent = '';
+                    return;
+                }
+                list.innerHTML = data.articles.map((a, i) => {
+                    const rankCls = i < 3 ? 'top' + (i + 1) : '';
+                    const time = a.publishedAt || a.time || a.published_at;
+                    return `
+                    <li>
+                        <a class="news-item" href="${escapeAttr(a.url || '#')}" target="_blank" rel="noopener">
+                            <div class="news-item-rank ${rankCls}">${i + 1}</div>
+                            <div class="news-item-body">
+                                <div class="news-item-title">${escapeHtml(a.title || '(无标题)')}</div>
+                                <div class="news-item-meta">
+                                    <span class="news-item-source">${escapeHtml(a.sourceIcon || '📰')} ${escapeHtml(a.source || '')}</span>
+                                    ${a.author ? `<span>👤 ${escapeHtml(a.author)}</span>` : ''}
+                                    <span>🕐 ${timeAgo(time)}</span>
+                                    ${a.score ? `<span>⬆ ${a.score}</span>` : ''}
+                                    ${a.comments ? `<span>💬 ${a.comments}</span>` : ''}
+                                </div>
+                            </div>
+                        </a>
+                    </li>`;
+                }).join('');
+                const sourceName = data.sources?.[data.source]?.name || data.source;
+                meta.innerHTML = `共 <strong>${data.count}</strong> 条 · 来源 ${sourceName}${data.cached ? ' · 📦 缓存' : ''}`;
+                newsLoaded = true;
+            } catch (e) {
+                list.innerHTML = '<li class="news-error">❌ 加载失败：' + escapeHtml(e.message) + '</li>';
+                meta.textContent = '';
+            } finally {
+                refreshBtn.classList.remove('spinning');
+            }
+        }
+
+        document.getElementById('news-source').addEventListener('change', () => { newsLoaded = false; loadNews(); });
+        document.getElementById('news-category').addEventListener('change', () => { newsLoaded = false; loadNews(); });
+        document.getElementById('news-refresh').addEventListener('click', () => { newsLoaded = false; loadNews(); });
     </script>
 </body>
 </html>
