@@ -911,6 +911,8 @@
 
         function render() {
             const list = document.getElementById('todo-list');
+            if (!list) return;
+            if (!Array.isArray(todos)) todos = [];
             const filtered = todos.filter(t => {
                 if (currentFilter === 'completed') return t.completed;
                 if (currentFilter === 'today') { if (t.completed) return false; const d = getDueStatus(t.dueDate); return d && d.cls === 'due-today'; }
@@ -1165,12 +1167,20 @@
         modal.addEventListener('click', e => { if (e.target === modal) hideModal(); });
 
         // ====== 启动 ======
-        updateUserBadge();
-        applyUserState();
-        connect();
-        render();
-        setInterval(render, 60000);
-        if (!userName) setTimeout(() => showModal(true), 600);
+        // 全局错误捕获
+        window.addEventListener('error', e => {
+            console.error('[全局错误]', e.message, 'at', (e.filename || '?') + ':' + e.lineno + ':' + e.colno);
+        });
+        try {
+            updateUserBadge();
+            applyUserState();
+            connect();
+            render();
+            setInterval(render, 60000);
+            if (!userName) setTimeout(() => showModal(true), 600);
+        } catch (e) {
+            console.error('[启动失败]', e);
+        }
 
         // ====== Tab 切换 ======
         document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -1216,63 +1226,63 @@
         }
 
         async function loadNews() {
-            const list = document.getElementById('news-list');
-            const meta = document.getElementById('news-meta');
-            const refreshBtn = document.getElementById('news-refresh');
-            if (!list || !meta) {
-                console.error('news 元素未找到');
-                return;
-            }
-            newsSource = document.getElementById('news-source')?.value || 'hn';
-            newsCategory = document.getElementById('news-category')?.value || 'top';
-            refreshBtn?.classList.add('spinning');
-            list.innerHTML = '<li class="news-empty"><div style="font-size:32px;margin-bottom:8px;opacity:0.5">⏳</div>加载中...</li>';
-            meta.textContent = '加载中...';
             try {
+                const list = document.getElementById('news-list');
+                const meta = document.getElementById('news-meta');
+                const refreshBtn = document.getElementById('news-refresh');
+                if (!list || !meta) {
+                    console.error('[News] 元素未找到');
+                    return;
+                }
+                newsSource = document.getElementById('news-source')?.value || 'hn';
+                newsCategory = document.getElementById('news-category')?.value || 'top';
+                refreshBtn?.classList.add('spinning');
+                list.innerHTML = '<li class="news-empty"><div style="font-size:32px;margin-bottom:8px;opacity:0.5">⏳</div>加载中...</li>';
+                meta.textContent = '加载中...';
                 const url = `/api/news?source=${encodeURIComponent(newsSource)}&category=${encodeURIComponent(newsCategory)}&t=${Date.now()}`;
-                console.log('[News] 请求:', url);
                 const res = await fetch(url, { cache: 'no-store' });
-                console.log('[News] 响应状态:', res.status);
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 const data = await res.json();
-                console.log('[News] 收到数据:', data.count, '条, 来源:', data.source);
-                if (!data.articles || data.articles.length === 0) {
+                if (!data || !Array.isArray(data.articles) || data.articles.length === 0) {
                     list.innerHTML = `
                         <li class="news-empty">
                             <div style="font-size:32px;margin-bottom:8px;opacity:0.5">📭</div>
                             <div>暂无新闻</div>
-                            ${newsSource === 'newsapi' ? '<div class="news-config-hint" style="margin-top:12px">💡 NewsAPI 需要在「⚙ 设置」中配置 API Key<br>或换一个数据源试试</div>' : ''}
                         </li>`;
                     meta.textContent = '共 0 条';
                     return;
                 }
                 list.innerHTML = data.articles.map((a, i) => {
                     const rankCls = i < 3 ? 'top' + (i + 1) : '';
-                    const time = a.publishedAt || a.time || a.published_at;
+                    const time = a?.publishedAt || a?.time || '';
                     return `
                     <li>
-                        <a class="news-item" href="${escapeAttr(a.url || '#')}" target="_blank" rel="noopener">
+                        <a class="news-item" href="${escapeAttr(a?.url || '#')}" target="_blank" rel="noopener">
                             <div class="news-item-rank ${rankCls}">${i + 1}</div>
                             <div class="news-item-body">
-                                <div class="news-item-title">${escapeHtml(a.title || '(无标题)')}</div>
+                                <div class="news-item-title">${escapeHtml(a?.title || '(无标题)')}</div>
                                 <div class="news-item-meta">
-                                    <span class="news-item-source">${escapeHtml(a.sourceIcon || '📰')} ${escapeHtml(a.source || '')}</span>
-                                    ${a.author ? `<span>👤 ${escapeHtml(a.author)}</span>` : ''}
+                                    <span class="news-item-source">${escapeHtml(a?.sourceIcon || '📰')} ${escapeHtml(a?.source || '')}</span>
+                                    ${a?.author ? `<span>👤 ${escapeHtml(a.author)}</span>` : ''}
                                     <span>🕐 ${timeAgo(time)}</span>
-                                    ${a.score ? `<span>⬆ ${a.score}</span>` : ''}
-                                    ${a.comments ? `<span>💬 ${a.comments}</span>` : ''}
+                                    ${a?.score ? `<span>⬆ ${a.score}</span>` : ''}
+                                    ${a?.comments ? `<span>💬 ${a.comments}</span>` : ''}
                                 </div>
                             </div>
                         </a>
                     </li>`;
                 }).join('');
-                const sourceName = data.sources?.[data.source]?.name || data.source;
-                meta.innerHTML = `共 <strong>${data.count}</strong> 条 · 来源 ${escapeHtml(sourceName)}${data.cached ? ' · 📦 缓存' : ''}`;
+                const sourceName = data.sources?.[data.source]?.name || data.source || 'News';
+                meta.innerHTML = `共 <strong>${data.count || 0}</strong> 条 · 来源 ${escapeHtml(sourceName)}${data.cached ? ' · 📦 缓存' : ''}`;
+                console.log('[News] 渲染完成:', data.articles.length, '条');
             } catch (e) {
                 console.error('[News] 加载失败:', e);
-                list.innerHTML = `<li class="news-error">❌ 加载失败：${escapeHtml(e.message)}<br><br><button onclick="loadNews()" style="margin-top:8px;padding:6px 14px;background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.3);border-radius:8px;color:white;cursor:pointer">重试</button></li>`;
-                meta.textContent = '';
+                const list = document.getElementById('news-list');
+                if (list) {
+                    list.innerHTML = `<li class="news-error">❌ 加载失败：${escapeHtml(e.message)}<br><br><button onclick="loadNews()" style="margin-top:8px;padding:6px 14px;background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.3);border-radius:8px;color:white;cursor:pointer">重试</button></li>`;
+                }
             } finally {
+                const refreshBtn = document.getElementById('news-refresh');
                 refreshBtn?.classList.remove('spinning');
             }
         }
