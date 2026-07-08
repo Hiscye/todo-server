@@ -74,6 +74,44 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify(todos, null, 2));
         return;
     }
+    // 🔍 新闻搜索（用 HN Algolia 免费搜索 API）
+    if (req.url.startsWith('/api/news/search')) {
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        const url = new URL(req.url, `http://${req.headers.host}`);
+        const query = url.searchParams.get('q') || '';
+        const hits = url.searchParams.get('hits') || '30';
+        if (!query.trim()) {
+            res.end(JSON.stringify({ query: '', count: 0, articles: [] }));
+            return;
+        }
+        try {
+            // HN Algolia 搜索（无需 key）
+            const algoliaUrl = `https://hn.algolia.com/api/v1/search?query=${encodeURIComponent(query)}&hitsPerPage=${hits}`;
+            const r = await fetch(algoliaUrl, { signal: AbortSignal.timeout(10000) });
+            if (!r.ok) throw new Error('Algolia HTTP ' + r.status);
+            const data = await r.json();
+            const articles = (data.hits || []).map(h => ({
+                id: 'search-' + (h.objectID || Math.random()),
+                title: h.title || h.story_title || '(无标题)',
+                url: h.url || h.story_url || `https://news.ycombinator.com/item?id=${h.objectID}`,
+                source: h._tags?.includes('story') ? 'Hacker News' : 'HN Comment',
+                sourceIcon: '🟠',
+                author: h.author || '',
+                time: h.created_at || '',
+                summary: h._highlightResult?.comment_text?.value?.replace(/<[^>]+>/g, '').slice(0, 200) || h.story_text || ''
+            })).filter(a => a.title);
+            res.end(JSON.stringify({
+                query,
+                count: articles.length,
+                articles,
+                source: 'hn-algolia'
+            }, null, 2));
+        } catch (e) {
+            res.end(JSON.stringify({ query, error: e.message, count: 0, articles: [] }, null, 2));
+        }
+        return;
+    }
+
     // 📰 新闻 API
     if (req.url.startsWith('/api/news')) {
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -88,6 +126,7 @@ const server = http.createServer(async (req, res) => {
             cached: !!cacheGet('hn-' + (source === 'newsapi' ? 'newsapi-' + category + '-cn' : category)),
             articles,
             sources: {
+                search: { name: '🔍 搜索新闻（HN Algolia）', icon: '🔍', needKey: false, categories: [] },
                 hn: { name: 'Hacker News（科技）', icon: '🟠', needKey: false, categories: ['top', 'new'] },
                 chinanews: { name: '中新网（中文新闻）', icon: '📰', needKey: false, categories: ['latest'] },
                 people: { name: '人民网（中文新闻）', icon: '🏛️', needKey: false, categories: ['society'] },

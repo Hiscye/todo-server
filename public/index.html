@@ -235,6 +235,77 @@
             border-radius: var(--r-sm);
             margin-bottom: var(--sp-2);
         }
+        .news-search-box {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: var(--sp-3);
+        }
+        .news-search-icon {
+            position: absolute;
+            left: 14px;
+            color: rgba(255,255,255,0.6);
+            font-size: 14px;
+            pointer-events: none;
+        }
+        .news-search-input {
+            flex: 1;
+            padding: 10px 36px 10px 38px;
+            background: rgba(255,255,255,0.18);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: var(--r-full);
+            color: white;
+            font-size: 13px;
+        }
+        .news-search-input::placeholder { color: rgba(255,255,255,0.55); }
+        .news-search-input:focus { background: rgba(255,255,255,0.28); border-color: rgba(255,255,255,0.5); outline: none; }
+        .news-search-clear {
+            position: absolute;
+            right: 88px;
+            width: 24px; height: 24px;
+            background: rgba(255,255,255,0.15);
+            border: none;
+            border-radius: 50%;
+            color: rgba(255,255,255,0.7);
+            font-size: 14px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        .news-search-clear.show { display: flex; }
+        .news-search-submit {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            color: white;
+            border: none;
+            border-radius: var(--r-full);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .news-search-submit:hover { transform: scale(1.05); }
+        .news-search-history {
+            display: flex; flex-wrap: wrap; gap: 4px;
+            margin-bottom: var(--sp-2);
+        }
+        .news-search-tag {
+            padding: 3px 10px;
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.25);
+            border-radius: var(--r-full);
+            font-size: 11px;
+            color: rgba(255,255,255,0.8);
+            cursor: pointer;
+        }
+        .news-search-tag:hover { background: rgba(255,255,255,0.25); color: white; }
+        .news-tag-highlight {
+            background: rgba(245, 87, 108, 0.3);
+            color: #fff;
+            padding: 0 2px;
+            border-radius: 3px;
+        }
         .news-meta {
             font-size: 12px;
             color: rgba(255,255,255,0.6);
@@ -735,6 +806,7 @@
             <div class="news-toolbar">
                 <select class="news-source-select" id="news-source">
                     <option value="hn">🟠 Hacker News（科技）</option>
+                    <option value="search">🔍 搜索新闻</option>
                     <option value="chinanews">📰 中新网（中文新闻）</option>
                     <option value="people">🏛️ 人民网（中文新闻）</option>
                     <option value="toutiao">📱 今日头条（中文热搜）</option>
@@ -747,6 +819,12 @@
                     <option value="new">🆕 最新</option>
                 </select>
                 <button class="news-refresh-btn" id="news-refresh" title="刷新">↻</button>
+            </div>
+            <div class="news-search-box" id="news-search-box" style="display:none">
+                <span class="news-search-icon">🔍</span>
+                <input type="text" class="news-search-input" id="news-search-input" placeholder="输入关键词搜索新闻（如 AI、足球、iphone...）" maxlength="50">
+                <button class="news-search-clear" id="news-search-clear" title="清空">×</button>
+                <button class="news-search-submit" id="news-search-submit" title="搜索">搜索</button>
             </div>
             <div class="news-source-hint" id="news-hint"></div>
             <div class="news-meta" id="news-meta">加载中...</div>
@@ -1278,6 +1356,18 @@
                 }
                 newsSource = document.getElementById('news-source')?.value || 'hn';
                 newsCategory = document.getElementById('news-category')?.value || 'top';
+                // 搜索源不自动加载，等用户输入关键词
+                if (newsSource === 'search') {
+                    refreshBtn?.classList.remove('spinning');
+                    if (!searchInput?.value?.trim()) {
+                        showSearchBox();
+                        list.innerHTML = '<li class="news-empty"><div style="font-size:48px;margin-bottom:14px;opacity:0.6">🔍</div><div style="color:white;font-size:15px;font-weight:600;margin-bottom:6px">搜索新闻</div><div style="color:rgba(255,255,255,0.7);font-size:13px">在上方输入框输入关键词</div></li>';
+                        meta.textContent = '';
+                    } else {
+                        doSearch();
+                    }
+                    return;
+                }
                 refreshBtn?.classList.add('spinning');
                 list.innerHTML = '<li class="news-empty"><div style="font-size:32px;margin-bottom:8px;opacity:0.5">⏳</div>加载中...</li>';
                 meta.textContent = '加载中...';
@@ -1302,7 +1392,7 @@
                         <a class="news-item" href="${escapeAttr(a?.url || '#')}" target="_blank" rel="noopener">
                             <div class="news-item-rank ${rankCls}">${i + 1}</div>
                             <div class="news-item-body">
-                                <div class="news-item-title">${escapeHtml(a?.title || '(无标题)')}</div>
+                                <div class="news-item-title">${highlightSearch(a?.title || '(无标题)')}</div>
                                 <div class="news-item-meta">
                                     <span class="news-item-source">${escapeHtml(a?.sourceIcon || '📰')} ${escapeHtml(a?.source || '')}</span>
                                     ${a?.author ? `<span>👤 ${escapeHtml(a.author)}</span>` : ''}
@@ -1336,6 +1426,134 @@
         document.getElementById('news-category')?.addEventListener('change', loadNews);
         document.getElementById('news-refresh')?.addEventListener('click', loadNews);
 
+        // 搜索功能
+        const searchInput = document.getElementById('news-search-input');
+        const searchBox = document.getElementById('news-search-box');
+        const searchClear = document.getElementById('news-search-clear');
+        const searchSubmit = document.getElementById('news-search-submit');
+        const searchHistoryKey = 'todo_news_search_history';
+        const popularKeywords = ['AI', 'iPhone', 'NBA', '足球', '科技', 'OpenAI', '欧冠', '世界杯', '电动车', '比特币'];
+
+        searchInput?.addEventListener('input', () => {
+            if (searchInput.value) searchClear.classList.add('show');
+            else searchClear.classList.remove('show');
+        });
+        searchInput?.addEventListener('keydown', e => {
+            if (e.key === 'Enter') doSearch();
+        });
+        searchSubmit?.addEventListener('click', doSearch);
+        searchClear?.addEventListener('click', () => {
+            searchInput.value = '';
+            searchClear.classList.remove('show');
+            renderSearchHistory();
+            // 切回默认源
+            document.getElementById('news-source').value = 'hn';
+            updateCategoryOptions();
+            loadNews();
+        });
+
+        async function doSearch() {
+            const q = searchInput.value.trim();
+            if (!q) return;
+            const list = document.getElementById('news-list');
+            const meta = document.getElementById('news-meta');
+            const refreshBtn = document.getElementById('news-refresh');
+            refreshBtn?.classList.add('spinning');
+            list.innerHTML = '<li class="news-empty"><div style="font-size:32px;margin-bottom:8px;opacity:0.5">⏳</div>搜索中...</li>';
+            meta.textContent = `搜索 "${q}"...`;
+            try {
+                const res = await fetch(`/api/news/search?q=${encodeURIComponent(q)}&hits=30`, { cache: 'no-store' });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                saveSearchHistory(q);
+                renderNewsList(data.articles || [], `搜索 "${q}" · ${data.count} 条结果`);
+            } catch (e) {
+                list.innerHTML = `<li class="news-error">❌ 搜索失败：${escapeHtml(e.message)}</li>`;
+                meta.textContent = '';
+            } finally {
+                refreshBtn?.classList.remove('spinning');
+            }
+        }
+
+        function saveSearchHistory(q) {
+            let history = JSON.parse(localStorage.getItem(searchHistoryKey) || '[]');
+            history = [q, ...history.filter(x => x !== q)].slice(0, 8);
+            localStorage.setItem(searchHistoryKey, JSON.stringify(history));
+        }
+
+        function renderSearchHistory() {
+            // 历史标签已通过 showSearchBox 显示
+        }
+
+        function showSearchBox() {
+            if (!searchBox) return;
+            searchBox.style.display = 'flex';
+            // 添加热门关键词提示
+            const hint = document.getElementById('news-hint');
+            if (hint && !searchInput.value) {
+                const history = JSON.parse(localStorage.getItem(searchHistoryKey) || '[]');
+                const all = history.length > 0 ? history : popularKeywords;
+                hint.innerHTML = '💡 试试：' + all.slice(0, 6).map(k =>
+                    `<span class="news-search-tag" data-search-tag="${escapeAttr(k)}" style="margin-left:4px;display:inline-block;cursor:pointer">${escapeHtml(k)}</span>`
+                ).join('');
+                // 绑定点击事件
+                hint.querySelectorAll('.news-search-tag').forEach(el => {
+                    el.addEventListener('click', () => {
+                        searchInput.value = el.dataset.searchTag;
+                        searchClear.classList.add('show');
+                        doSearch();
+                    });
+                });
+            }
+        }
+
+        function hideSearchBox() {
+            if (searchBox) searchBox.style.display = 'none';
+        }
+
+        // 通用渲染新闻列表函数
+        function renderNewsList(articles, metaText) {
+            const list = document.getElementById('news-list');
+            const meta = document.getElementById('news-meta');
+            if (!list || !meta) return;
+            if (articles.length === 0) {
+                list.innerHTML = '<li class="news-empty"><div style="font-size:32px;margin-bottom:8px;opacity:0.5">📭</div><div>暂无结果</div></li>';
+                meta.textContent = metaText || '共 0 条';
+                return;
+            }
+            list.innerHTML = articles.map((a, i) => {
+                const rankCls = i < 3 ? 'top' + (i + 1) : '';
+                const time = a?.publishedAt || a?.time || '';
+                return `
+                <li>
+                    <a class="news-item" href="${escapeAttr(a?.url || '#')}" target="_blank" rel="noopener">
+                        <div class="news-item-rank ${rankCls}">${i + 1}</div>
+                        <div class="news-item-body">
+                            <div class="news-item-title">${highlightSearch(a?.title || '(无标题)')}</div>
+                            <div class="news-item-meta">
+                                <span class="news-item-source">${escapeHtml(a?.sourceIcon || '📰')} ${escapeHtml(a?.source || '')}</span>
+                                ${a?.author ? `<span>👤 ${escapeHtml(a.author)}</span>` : ''}
+                                <span>🕐 ${timeAgo(time)}</span>
+                                ${a?.score ? `<span>⬆ ${a.score}</span>` : ''}
+                                ${a?.comments ? `<span>💬 ${a.comments}</span>` : ''}
+                            </div>
+                        </div>
+                    </a>
+                </li>`;
+            }).join('');
+            meta.textContent = metaText || `共 ${articles.length} 条`;
+        }
+
+        // 高亮搜索关键词
+        function highlightSearch(text) {
+            const q = searchInput?.value?.trim();
+            if (!q) return escapeHtml(text);
+            const escapedText = escapeHtml(text);
+            // 简单的关键词高亮（不区分大小写）
+            const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+            return escapedText.replace(re, m => `<span class="news-tag-highlight">${m}</span>`);
+        }
+
         // 根据数据源动态显示分类选项
         function updateCategoryOptions() {
             const source = document.getElementById('news-source')?.value;
@@ -1343,6 +1561,7 @@
             const hint = document.getElementById('news-hint');
             const CATS = {
                 hn: [['top', '🔥 热门'], ['new', '🆕 最新']],
+                search: [],
                 chinanews: [['latest', '📰 即时新闻']],
                 people: [['society', '🏛️ 社会新闻']],
                 toutiao: [['trending', '🔥 热搜榜']],
@@ -1363,7 +1582,11 @@
             };
             const options = CATS[source] || CATS.hn;
             if (cat) {
-                cat.innerHTML = options.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
+                cat.innerHTML = options.length > 0
+                    ? options.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')
+                    : '<option value="">🔍 用上方搜索框</option>';
+                // 搜索时禁用分类下拉
+                cat.disabled = (source === 'search');
             }
             const HINTS = {
                 espn: '💡 不同分类对应不同联赛',
@@ -1371,9 +1594,17 @@
                 chinanews: '🇨🇳 中国新闻网 · 即时滚动新闻',
                 people: '🇨🇳 人民网 · 社会新闻',
                 toutiao: '🇨🇳 今日头条 · 实时热搜',
-                all: '🌐 混合所有源'
+                all: '🌐 混合所有源',
+                search: ''
             };
             if (hint) hint.textContent = HINTS[source] || '';
+
+            // 搜索源显示搜索框 + 历史/热门
+            if (source === 'search') {
+                showSearchBox();
+            } else {
+                hideSearchBox();
+            }
         }
     </script>
 </body>
