@@ -235,6 +235,104 @@
             border-radius: var(--r-sm);
             margin-bottom: var(--sp-2);
         }
+
+        /* 搜索历史侧栏 */
+        .news-history-panel {
+            background: rgba(255,255,255,0.08);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: var(--r-md);
+            padding: var(--sp-3);
+            margin-bottom: var(--sp-3);
+            display: none;
+        }
+        .news-history-panel.show { display: block; }
+        .news-history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--sp-2);
+        }
+        .news-history-title {
+            font-size: 12px;
+            color: rgba(255,255,255,0.85);
+            font-weight: 600;
+        }
+        .news-history-clear-all {
+            font-size: 11px;
+            color: rgba(255,255,255,0.5);
+            background: transparent;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+        .news-history-clear-all:hover {
+            color: #fca5a5;
+            background: rgba(252, 165, 165, 0.1);
+        }
+        .news-history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            margin-bottom: var(--sp-2);
+        }
+        .news-history-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 8px;
+            background: rgba(255,255,255,0.05);
+            border-radius: var(--r-sm);
+            font-size: 12px;
+            color: rgba(255,255,255,0.85);
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .news-history-item:hover {
+            background: rgba(255,255,255,0.12);
+        }
+        .news-history-item .history-text {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .news-history-item .history-count {
+            background: rgba(245, 87, 108, 0.3);
+            color: white;
+            font-size: 10px;
+            padding: 1px 6px;
+            border-radius: var(--r-full);
+            font-weight: 600;
+        }
+        .news-history-item .history-time {
+            font-size: 10px;
+            color: rgba(255,255,255,0.4);
+        }
+        .news-history-item .history-remove {
+            opacity: 0;
+            width: 18px; height: 18px;
+            border-radius: 50%;
+            color: rgba(255,255,255,0.6);
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .news-history-item:hover .history-remove { opacity: 1; }
+        .news-history-item .history-remove:hover { background: rgba(252, 165, 165, 0.2); color: #fca5a5; }
+        .news-history-hotwords {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            padding-top: var(--sp-2);
+            border-top: 1px dashed rgba(255,255,255,0.15);
+        }
+        .news-history-hotwords .hotword-label {
+            font-size: 11px;
+            color: rgba(255,255,255,0.5);
+            margin-right: 4px;
+            align-self: center;
+        }
         .news-search-box {
             position: relative;
             display: flex;
@@ -825,6 +923,14 @@
                 <input type="text" class="news-search-input" id="news-search-input" placeholder="输入关键词搜索新闻（如 AI、足球、iphone...）" maxlength="50">
                 <button class="news-search-clear" id="news-search-clear" title="清空">×</button>
                 <button class="news-search-submit" id="news-search-submit" title="搜索">搜索</button>
+            </div>
+            <div class="news-history-panel" id="news-history-panel">
+                <div class="news-history-header">
+                    <span class="news-history-title">📜 搜索历史</span>
+                    <button class="news-history-clear-all" id="news-history-clear-all" title="清空全部">清空</button>
+                </div>
+                <div class="news-history-list" id="news-history-list"></div>
+                <div class="news-history-hotwords" id="news-history-hotwords"></div>
             </div>
             <div class="news-source-hint" id="news-hint"></div>
             <div class="news-meta" id="news-meta">加载中...</div>
@@ -1445,11 +1551,18 @@
         searchClear?.addEventListener('click', () => {
             searchInput.value = '';
             searchClear.classList.remove('show');
-            renderSearchHistory();
+            renderHistoryPanel();
             // 切回默认源
             document.getElementById('news-source').value = 'hn';
             updateCategoryOptions();
             loadNews();
+        });
+
+        // 清空全部历史
+        document.getElementById('news-history-clear-all')?.addEventListener('click', () => {
+            if (confirm('确定清空所有搜索历史？')) {
+                clearHistory();
+            }
         });
 
         async function doSearch() {
@@ -1475,29 +1588,101 @@
             }
         }
 
+        // ====== 搜索历史管理 ======
+        function getHistory() {
+            try { return JSON.parse(localStorage.getItem(searchHistoryKey) || '[]'); }
+            catch { return []; }
+        }
+        function saveHistory(arr) {
+            localStorage.setItem(searchHistoryKey, JSON.stringify(arr.slice(0, 8)));
+        }
         function saveSearchHistory(q) {
-            let history = JSON.parse(localStorage.getItem(searchHistoryKey) || '[]');
-            history = [q, ...history.filter(x => x !== q)].slice(0, 8);
-            localStorage.setItem(searchHistoryKey, JSON.stringify(history));
+            const history = getHistory();
+            const existing = history.find(x => x.keyword === q);
+            if (existing) {
+                existing.count = (existing.count || 1) + 1;
+                existing.lastUsed = Date.now();
+            } else {
+                history.unshift({ keyword: q, count: 1, lastUsed: Date.now() });
+            }
+            // 按最近使用时间排序
+            history.sort((a, b) => b.lastUsed - a.lastUsed);
+            saveHistory(history);
         }
-
-        function renderSearchHistory() {
-            // 历史标签已通过 showSearchBox 显示
+        function removeFromHistory(q) {
+            const history = getHistory().filter(x => x.keyword !== q);
+            saveHistory(history);
+            renderHistoryPanel();
         }
-
-        function showSearchBox() {
-            if (!searchBox) return;
-            searchBox.style.display = 'flex';
-            // 添加热门关键词提示
-            const hint = document.getElementById('news-hint');
-            if (hint && !searchInput.value) {
-                const history = JSON.parse(localStorage.getItem(searchHistoryKey) || '[]');
-                const all = history.length > 0 ? history : popularKeywords;
-                hint.innerHTML = '💡 试试：' + all.slice(0, 6).map(k =>
-                    `<span class="news-search-tag" data-search-tag="${escapeAttr(k)}" style="margin-left:4px;display:inline-block;cursor:pointer">${escapeHtml(k)}</span>`
+        function clearHistory() {
+            localStorage.removeItem(searchHistoryKey);
+            renderHistoryPanel();
+        }
+        function timeAgoShort(ts) {
+            if (!ts) return '';
+            const diff = Date.now() - ts;
+            const m = Math.floor(diff / 60000);
+            if (m < 1) return '刚刚';
+            if (m < 60) return m + '分';
+            const h = Math.floor(m / 60);
+            if (h < 24) return h + '时';
+            const d = Math.floor(h / 24);
+            if (d < 7) return d + '天';
+            return Math.floor(d / 7) + '周';
+        }
+        function renderHistoryPanel() {
+            const panel = document.getElementById('news-history-panel');
+            const list = document.getElementById('news-history-list');
+            const hot = document.getElementById('news-history-hotwords');
+            if (!panel || !list || !hot) return;
+            const history = getHistory();
+            // 有历史时显示历史，无历史时显示热门词
+            if (history.length > 0) {
+                panel.classList.add('show');
+                list.innerHTML = history.map(h => `
+                    <div class="news-history-item" data-history-key="${escapeAttr(h.keyword)}">
+                        <span style="opacity:0.5">🔍</span>
+                        <span class="history-text">${escapeHtml(h.keyword)}</span>
+                        <span class="history-count">${h.count || 1}</span>
+                        <span class="history-time">${timeAgoShort(h.lastUsed)}</span>
+                        <button class="history-remove" data-remove-key="${escapeAttr(h.keyword)}" title="删除">×</button>
+                    </div>
+                `).join('');
+                list.querySelectorAll('.news-history-item').forEach(item => {
+                    const k = item.dataset.historyKey;
+                    item.addEventListener('click', e => {
+                        if (e.target.closest('.history-remove')) return;
+                        searchInput.value = k;
+                        searchClear.classList.add('show');
+                        doSearch();
+                    });
+                });
+                list.querySelectorAll('.history-remove').forEach(btn => {
+                    btn.addEventListener('click', e => {
+                        e.stopPropagation();
+                        removeFromHistory(btn.dataset.removeKey);
+                    });
+                });
+                // 热门词（始终显示）
+                hot.innerHTML = '<span class="hotword-label">🔥</span>' + popularKeywords.slice(0, 5).map(k =>
+                    `<span class="news-search-tag" data-search-tag="${escapeAttr(k)}">${escapeHtml(k)}</span>`
                 ).join('');
-                // 绑定点击事件
-                hint.querySelectorAll('.news-search-tag').forEach(el => {
+                hot.querySelectorAll('.news-search-tag').forEach(el => {
+                    el.addEventListener('click', () => {
+                        searchInput.value = el.dataset.searchTag;
+                        searchClear.classList.add('show');
+                        doSearch();
+                    });
+                });
+            } else {
+                // 无历史，只显示热门词
+                panel.classList.add('show');
+                list.innerHTML = '<div style="font-size:11px;color:rgba(255,255,255,0.5);text-align:center;padding:8px">还没有搜索记录</div>';
+                hot.innerHTML = '<span class="hotword-label">💡 试试：</span>' + popularKeywords.map(k =>
+                    `<span class="news-search-tag" data-search-tag="${escapeAttr(k)}" style="font-size:11px;padding:3px 10px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);border-radius:9999px;color:rgba(255,255,255,0.85);cursor:pointer">${escapeHtml(k)}</span>`
+                ).join('');
+                hot.querySelectorAll('.news-search-tag').forEach(el => {
+                    el.style.margin = '0';
                     el.addEventListener('click', () => {
                         searchInput.value = el.dataset.searchTag;
                         searchClear.classList.add('show');
@@ -1505,6 +1690,12 @@
                     });
                 });
             }
+        }
+
+        function showSearchBox() {
+            if (!searchBox) return;
+            searchBox.style.display = 'flex';
+            renderHistoryPanel();
         }
 
         function hideSearchBox() {
