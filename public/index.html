@@ -803,6 +803,137 @@
             cursor: default;
         }
         .install-btn.installed:hover { transform: none; }
+
+        /* AI 聊天 */
+        #tab-chat {
+            display: flex;
+            flex-direction: column;
+            height: 600px;
+            max-height: 70vh;
+        }
+        .chat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--sp-2) var(--sp-3);
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.18);
+            border-radius: var(--r-md);
+            margin-bottom: var(--sp-2);
+        }
+        .chat-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .chat-icon-btn {
+            width: 30px; height: 30px;
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: var(--r-sm);
+            color: white;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .chat-icon-btn:hover { background: rgba(255,255,255,0.25); }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: var(--sp-2);
+            display: flex;
+            flex-direction: column;
+            gap: var(--sp-3);
+        }
+        .chat-message {
+            display: flex;
+            max-width: 85%;
+            animation: chatIn 0.3s ease;
+        }
+        .chat-message.user {
+            align-self: flex-end;
+        }
+        .chat-message.ai {
+            align-self: flex-start;
+        }
+        @keyframes chatIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .chat-bubble {
+            padding: var(--sp-2) var(--sp-3);
+            border-radius: var(--r-md);
+            font-size: 13px;
+            line-height: 1.5;
+            color: white;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .chat-message.user .chat-bubble {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            border-bottom-right-radius: 4px;
+        }
+        .chat-message.ai .chat-bubble {
+            background: rgba(255,255,255,0.18);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-bottom-left-radius: 4px;
+        }
+        .chat-input-bar {
+            display: flex;
+            align-items: flex-end;
+            gap: 6px;
+            padding: var(--sp-2);
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: var(--r-md);
+            margin-top: var(--sp-2);
+        }
+        .chat-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 13px;
+            resize: none;
+            min-height: 20px;
+            max-height: 80px;
+            line-height: 1.4;
+            padding: 4px 6px;
+        }
+        .chat-input::placeholder { color: rgba(255,255,255,0.5); }
+        .chat-input:focus { outline: none; }
+        .chat-send {
+            width: 36px; height: 36px;
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .chat-send:hover:not(:disabled) { transform: scale(1.05); }
+        .chat-send:disabled {
+            background: rgba(255,255,255,0.2);
+            cursor: not-allowed;
+        }
+        .chat-status {
+            font-size: 11px;
+            color: rgba(255,255,255,0.5);
+            text-align: center;
+            margin-top: 4px;
+            min-height: 14px;
+        }
+        .chat-status.error { color: #fca5a5; }
         @keyframes bounceIn {
             0% { transform: scale(0); opacity: 0; }
             50% { transform: scale(1.1); }
@@ -844,6 +975,10 @@
                 <span class="tab-icon">📰</span>
                 <span>资讯</span>
                 <span class="tab-count" id="tab-news-count">0</span>
+            </button>
+            <button class="tab-btn" data-tab="chat">
+                <span class="tab-icon">💬</span>
+                <span>聊天</span>
             </button>
         </div>
 
@@ -935,6 +1070,34 @@
             <div class="news-source-hint" id="news-hint"></div>
             <div class="news-meta" id="news-meta">加载中...</div>
             <ul class="news-list" id="news-list"></ul>
+        </div>
+
+        <div class="tab-content" id="tab-chat" style="display:none">
+            <div class="chat-header">
+                <div class="chat-title">
+                    <span style="font-size:18px">💬</span>
+                    <span>AI 助手</span>
+                </div>
+                <div class="chat-actions">
+                    <button class="chat-icon-btn" id="chat-clear" title="清空对话">🗑</button>
+                </div>
+            </div>
+            <div class="chat-messages" id="chat-messages">
+                <div class="chat-message ai">
+                    <div class="chat-bubble">👋 你好！我是 AI 助手，可以帮你：</div>
+                    <div class="chat-bubble" style="margin-top:6px;opacity:0.9;font-size:13px">
+                        • 总结今天的待办<br>
+                        • 推荐相关资讯<br>
+                        • 回答问题、写作、翻译<br>
+                        • 任何文字工作
+                    </div>
+                </div>
+            </div>
+            <div class="chat-input-bar">
+                <textarea class="chat-input" id="chat-input" placeholder="输入消息，回车发送（Shift+回车换行）" rows="1"></textarea>
+                <button class="chat-send" id="chat-send" title="发送">➤</button>
+            </div>
+            <div class="chat-status" id="chat-status"></div>
         </div>
     </div>
 
@@ -1250,8 +1413,137 @@
                 document.getElementById('due-input').disabled = true;
                 document.querySelectorAll('.chip[data-prio]').forEach(c => c.disabled = true);
             }
-            // 资讯 Tab 永远显示，由 switchTab 决定内容（登录提示 / 正常新闻）
         }
+
+        // ====== AI 聊天 ======
+        const chatMessages = document.getElementById('chat-messages');
+        const chatInput = document.getElementById('chat-input');
+        const chatSend = document.getElementById('chat-send');
+        const chatStatus = document.getElementById('chat-status');
+        const chatClear = document.getElementById('chat-clear');
+        const chatHistoryKey = 'todo_chat_history';
+        let chatBusy = false;
+
+        // 自动调整 textarea 高度
+        chatInput?.addEventListener('input', () => {
+            chatInput.style.height = 'auto';
+            chatInput.style.height = Math.min(chatInput.scrollHeight, 80) + 'px';
+        });
+
+        chatInput?.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendChat();
+            }
+        });
+        chatSend?.addEventListener('click', sendChat);
+        chatClear?.addEventListener('click', () => {
+            if (confirm('清空所有聊天记录？')) {
+                localStorage.removeItem(chatHistoryKey);
+                renderChatMessages();
+            }
+        });
+
+        function renderChatMessages() {
+            if (!chatMessages) return;
+            const history = JSON.parse(localStorage.getItem(chatHistoryKey) || '[]');
+            if (history.length === 0) {
+                chatMessages.innerHTML = `
+                    <div class="chat-message ai">
+                        <div class="chat-bubble">👋 你好！我是 AI 助手，可以帮你：</div>
+                        <div class="chat-bubble" style="margin-top:6px;opacity:0.9;font-size:13px">
+                            • 总结今天的待办<br>
+                            • 推荐相关资讯<br>
+                            • 回答问题、写作、翻译<br>
+                            • 任何文字工作
+                        </div>
+                        <div class="chat-bubble" style="margin-top:6px;background:rgba(251,191,36,0.2);border:1px solid rgba(251,191,36,0.3);font-size:12px">
+                            💡 首次使用需在 Railway 配置环境变量：<br>
+                            <code style="color:#fde68a">ANTHROPIC_API_KEY</code>
+                        </div>
+                    </div>`;
+            } else {
+                chatMessages.innerHTML = history.map(m => `
+                    <div class="chat-message ${m.role}">
+                        <div class="chat-bubble">${escapeHtml(m.content)}</div>
+                    </div>`).join('');
+                // 滚动到底部
+                setTimeout(() => { chatMessages.scrollTop = chatMessages.scrollHeight; }, 0);
+            }
+        }
+
+        function saveChatMessage(role, content) {
+            const history = JSON.parse(localStorage.getItem(chatHistoryKey) || '[]');
+            history.push({ role, content, time: Date.now() });
+            // 限制最多 100 条
+            if (history.length > 100) history.splice(0, history.length - 100);
+            localStorage.setItem(chatHistoryKey, JSON.stringify(history));
+        }
+
+        function getChatHistory() {
+            return JSON.parse(localStorage.getItem(chatHistoryKey) || '[]')
+                .slice(-20) // 只取最近 20 条
+                .map(m => ({ role: m.role, content: m.content }));
+        }
+
+        async function sendChat() {
+            if (chatBusy) return;
+            const text = chatInput.value.trim();
+            if (!text) return;
+            if (!userName) {
+                toast('请先设置名字', 'error');
+                showModal(true);
+                return;
+            }
+            chatBusy = true;
+            chatInput.value = '';
+            chatInput.style.height = 'auto';
+            chatSend.disabled = true;
+            // 添加用户消息
+            const userBubble = document.createElement('div');
+            userBubble.className = 'chat-message user';
+            userBubble.innerHTML = `<div class="chat-bubble">${escapeHtml(text)}</div>`;
+            chatMessages.appendChild(userBubble);
+            saveChatMessage('user', text);
+            // 添加 AI 占位
+            const aiBubble = document.createElement('div');
+            aiBubble.className = 'chat-message ai';
+            aiBubble.innerHTML = '<div class="chat-bubble"><span class="chat-typing">●●●</span> 思考中...</div>';
+            chatMessages.appendChild(aiBubble);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            chatStatus.textContent = '发送中...';
+            try {
+                const messages = getChatHistory();
+                const res = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ messages })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    let errMsg = data.error || '请求失败';
+                    if (data.hint) errMsg += '\n\n💡 ' + data.hint;
+                    throw new Error(errMsg);
+                }
+                const reply = data.reply || '(无回复)';
+                aiBubble.innerHTML = `<div class="chat-bubble">${escapeHtml(reply)}</div>`;
+                saveChatMessage('assistant', reply);
+                chatStatus.textContent = '✓ 已回复';
+                setTimeout(() => { chatStatus.textContent = ''; }, 2000);
+            } catch (e) {
+                aiBubble.innerHTML = `<div class="chat-bubble" style="background:rgba(248,113,113,0.2);border:1px solid rgba(248,113,113,0.4);font-size:12px">❌ ${escapeHtml(e.message)}</div>`;
+                chatStatus.textContent = '发送失败';
+                chatStatus.classList.add('error');
+                setTimeout(() => { chatStatus.classList.remove('error'); chatStatus.textContent = ''; }, 4000);
+            } finally {
+                chatBusy = false;
+                chatSend.disabled = false;
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                chatInput.focus();
+            }
+        }
+
+        renderChatMessages();
 
         function connect() {
             let url = wsUrl.trim();
@@ -1393,8 +1685,10 @@
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
             const todoEl = document.getElementById('tab-todo');
             const newsEl = document.getElementById('tab-news');
+            const chatEl = document.getElementById('tab-chat');
             if (todoEl) todoEl.style.display = tab === 'todo' ? 'block' : 'none';
             if (newsEl) newsEl.style.display = tab === 'news' ? 'block' : 'none';
+            if (chatEl) chatEl.style.display = tab === 'chat' ? 'flex' : 'none';
             // 资讯 tab 时隐藏右下角安装按钮（避免遮挡）
             const installBtn = document.getElementById('install-btn');
             if (installBtn) installBtn.style.display = (tab === 'news') ? 'none' : '';

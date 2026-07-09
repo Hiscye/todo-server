@@ -1,14 +1,14 @@
 // ============================================
-// 当前版本：v1.7.0 - 实时新闻模块（与待办平级）
-// 上一个版本：v1.6.0-floating-widget
-// 部署分支：v1.7.0-news-tab
+// 当前版本：v1.9.0 - AI 对话（与待办/资讯平级）
+// 上一个版本：v1.8.1-search-history
+// 部署分支：v1.9.0-ai-chat
 // 部署地址：https://todo-server-production-bee1.up.railway.app
 // 改动说明：
-//   1. 新增「资讯」Tab（与待办平级切换）
-//   2. 后端 /api/news 端点（多源：Hacker News + NewsAPI 可选）
-//   3. 缓存 5 分钟，减少 API 调用
-//   4. Hacker News 内置（无需 key）
-//   5. 用户可在设置里配置 NewsAPI key 解锁更多源
+//   1. 新增「💬 聊天」Tab（与待办/资讯平级）
+//   2. 后端 /api/chat 端点（Anthropic API）
+//   3. 消息流式渲染，UI 类似现代聊天
+//   4. 历史消息保留到 localStorage
+//   5. 需要在 Railway 环境变量配置 ANTHROPIC_API_KEY
 // ============================================
 
 // 代办清单实时同步服务器
@@ -109,6 +109,64 @@ const server = http.createServer(async (req, res) => {
         } catch (e) {
             res.end(JSON.stringify({ query, error: e.message, count: 0, articles: [] }, null, 2));
         }
+        return;
+    }
+
+    // 💬 AI 对话 API
+    if (req.url === '/api/chat' && req.method === 'POST') {
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        const apiKey = process.env.ANTHROPIC_API_KEY || '';
+        if (!apiKey) {
+            res.statusCode = 400;
+            res.end(JSON.stringify({
+                error: '未配置 ANTHROPIC_API_KEY',
+                hint: '请在 Railway 环境变量添加 ANTHROPIC_API_KEY（从 https://console.anthropic.com 获取）'
+            }, null, 2));
+            return;
+        }
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', async () => {
+            try {
+                const data = JSON.parse(body);
+                const messages = Array.isArray(data.messages) ? data.messages.slice(-20) : [];
+                if (messages.length === 0) {
+                    res.statusCode = 400;
+                    res.end(JSON.stringify({ error: '消息列表为空' }));
+                    return;
+                }
+                const model = data.model || 'claude-haiku-4-5';
+                const system = data.system || '你是一个友好、简洁的 AI 助手，正在帮用户管理待办事项和查看新闻。回答用中文。';
+                const r = await fetch('https://api.anthropic.com/v1/messages', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': apiKey,
+                        'anthropic-version': '2023-06-01'
+                    },
+                    body: JSON.stringify({
+                        model, max_tokens: 1024, system, messages
+                    }),
+                    signal: AbortSignal.timeout(60000)
+                });
+                if (!r.ok) {
+                    const err = await r.text();
+                    res.statusCode = r.status;
+                    res.end(JSON.stringify({ error: 'Anthropic API 错误', detail: err.slice(0, 500) }));
+                    return;
+                }
+                const aiData = await r.json();
+                const reply = aiData.content?.[0]?.text || '(无回复)';
+                res.end(JSON.stringify({
+                    reply,
+                    model: aiData.model,
+                    usage: aiData.usage
+                }, null, 2));
+            } catch (e) {
+                res.statusCode = 500;
+                res.end(JSON.stringify({ error: e.message }));
+            }
+        });
         return;
     }
 
